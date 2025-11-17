@@ -1,4 +1,5 @@
-﻿using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
+﻿using Gavel.API.Contracts;
+using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,11 @@ public class AuctionItemController(IMediator mediator) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAuctionItems([FromQuery] GetAuctionItemsQuery request)
     {
-        var res = await mediator.Send(request);
-        return Ok(res);
+        var (items, totalCount) = await mediator.Send(request);
+
+        var meta = new Meta(request.Page, request.Size, totalCount);
+        var response = ApiResponseFactory.Success(items, meta);
+        
+        return Ok(response);
     }
 }
