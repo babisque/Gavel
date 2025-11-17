@@ -1,4 +1,5 @@
 ﻿using Gavel.API.Contracts;
+using Gavel.Application.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 
@@ -35,7 +36,12 @@ public static class ApplicationBuilderExtensions
                 if (exception is not null)
                 {
                     context.Response.ContentType = "application/json";
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+                    context.Response.StatusCode = exception switch
+                    {
+                        NotFoundException => StatusCodes.Status404NotFound,
+                        _ => StatusCodes.Status500InternalServerError
+                    };
 
                     var errorResponse = ApiResponseFactory.Failure<object>("Error", exception.Message);
                     await context.Response.WriteAsJsonAsync(errorResponse);
