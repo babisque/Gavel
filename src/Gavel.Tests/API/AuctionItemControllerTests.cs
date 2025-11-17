@@ -102,4 +102,27 @@ public class AuctionItemControllerTests
         
         _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task GetAuctionItemById_WhenMediatorThrowsException_PropagatesException()
+    {
+        // Arrange
+        var itemId = Guid.NewGuid();
+        var request = new GetAuctionItemByIdQuery { Id = itemId };
+        _mockMediator
+            .Setup(m => m.Send(request, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Mediator error"));
+        
+        // Act
+        var result = await _controller.GetAuctionItemById(request);
+        
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        var apiResponse = Assert.IsType<ApiResponse<GetAuctionItemByIdResponse>>(objectResult.Value);
+        Assert.Null(apiResponse.Data);
+        Assert.NotNull(apiResponse.Errors);
+        Assert.Single(apiResponse.Errors);
+        Assert.Equal("Mediator error", apiResponse.Errors.First().Message);
+        _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
