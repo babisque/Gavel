@@ -17,13 +17,12 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : class
     /// <summary>
     /// find all table entities
     /// </summary>
-    public async Task<(IReadOnlyCollection<TEntity> Items, int TotalCount)> GetAllPagedAsync(int page, int pageSize)
+    public virtual async Task<(IReadOnlyCollection<TEntity> Items, int TotalCount)> GetAllPagedAsync(int page, int pageSize)
     {
         var totalCount = await _dbSet.CountAsync();
 
         var items = await _dbSet
             .AsNoTracking()
-            .OrderBy(x => x)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
