@@ -1,6 +1,6 @@
 ﻿namespace Gavel.Domain.Interfaces.Repositories;
 
-public interface IRepository<TEntity> : IDisposable where TEntity : class
+public interface IRepository<TEntity> where TEntity : class
 {
     /// <summary>
     /// returns all entities asynchronously

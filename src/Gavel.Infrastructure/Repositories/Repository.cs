@@ -23,26 +23,4 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : class
             .Take(pagesize)
             .ToListAsync();
     }
-
-    #region Disposable Support
-    private bool _disposed = false;
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed)
-            if(disposing)
-                _context.Dispose();
-        
-        _disposed = true;
-    }
-    
-    /// <summary>
-    /// release the dbContext
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-    #endregion
 }
