@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gavel.Infrastructure.Repositories;
 
-public class Repository<TEntity> : IRepository<TEntity> where TEntity : class
+public abstract class Repository<TEntity> : IRepository<TEntity> where TEntity : class
 {
     private readonly DbContext _context;
     private readonly DbSet<TEntity> _dbSet;
@@ -13,22 +13,8 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : class
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _dbSet = _context.Set<TEntity>();
     }
-
-    /// <summary>
-    /// find all table entities
-    /// </summary>
-    public virtual async Task<(IReadOnlyCollection<TEntity> Items, int TotalCount)> GetAllPagedAsync(int page, int pageSize)
-    {
-        var totalCount = await _dbSet.CountAsync();
-
-        var items = await _dbSet
-            .AsNoTracking()
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-        
-        return (items, totalCount);
-    }
+    
+    public abstract Task<(IReadOnlyCollection<TEntity> Items, int TotalCount)> GetAllPagedAsync(int page, int pageSize);
 
     /// <summary>
     /// find entity by id

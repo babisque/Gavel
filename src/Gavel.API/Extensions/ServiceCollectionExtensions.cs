@@ -14,7 +14,7 @@ public static class ServiceCollectionExtensions
     {
         services
             .AddDatabase(configuration)
-            .AddCustomCors()
+            .AddCustomCors(configuration)
             .AddSwagger()
             .AddRepositories()
             .AddApplicationServices(configuration);
@@ -28,15 +28,18 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddCustomCors(this IServiceCollection services)
+    private static IServiceCollection AddCustomCors(this IServiceCollection services, IConfiguration configuration)
     {
         var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+        
+        var origins = configuration.GetValue<string>("Cors:AllowedOrigins")?.Split(',') ?? [];
+        
         services.AddCors(options =>
         {
             options.AddPolicy(name: MyAllowSpecificOrigins,
                 policy =>
                 {
-                    policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+                    policy.WithOrigins(origins)
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
