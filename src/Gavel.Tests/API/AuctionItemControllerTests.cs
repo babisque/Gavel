@@ -25,8 +25,8 @@ public class AuctionItemControllerTests
         var request = new GetAuctionItemsQuery { Page = 1, Size = 10 };
         var expectedItems = new List<GetAuctionItemsResponse>
         {
-            new GetAuctionItemsResponse { Id = Guid.NewGuid(), Name = "Item 1" },
-            new GetAuctionItemsResponse { Id = Guid.NewGuid(), Name = "Item 2" }
+            new() { Id = Guid.NewGuid(), Name = "Item 1" },
+            new() { Id = Guid.NewGuid(), Name = "Item 2" }
         };
         var expectedTotalCount = 2;
         var mediatorResponse = (Items: expectedItems, TotalCount: expectedTotalCount);
