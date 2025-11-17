@@ -1,0 +1,6 @@
+<Solution>
+    <Project Path="src/Gavel.API/Gavel.API.csproj" />
+    <Project Path="src/Gavel.Application/Gavel.Application.csproj" />
+    <Project Path="src/Gavel.Core/Gavel.Domain.csproj" />
+    <Project Path="src/Gavel.Infrastructure/Gavel.Infrastructure.csproj" />
+</Solution>
