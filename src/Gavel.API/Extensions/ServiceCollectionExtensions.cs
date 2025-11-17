@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
             .AddCustomCors()
             .AddSwagger()
             .AddRepositories()
-            .AddApplicationServices();
+            .AddApplicationServices(configuration);
     }
 
     private static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
@@ -64,13 +64,18 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    private static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddAutoMapper(cfg =>
         {
             cfg.AddMaps(typeof(AuctionItemsMapper).Assembly);
+            cfg.LicenseKey = configuration.GetSection("LuckyPenny:LicenseKey").Value;
         });
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetAuctionItemsHandler).Assembly));
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssembly(typeof(GetAuctionItemsHandler).Assembly);
+            cfg.LicenseKey = configuration.GetSection("LuckyPenny:LicenseKey").Value;
+        });
         return services;
     }
 

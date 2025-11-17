@@ -28,5 +28,7 @@ public class AuctionItemsConfiguration : IEntityTypeConfiguration<AuctionItem>
         builder.HasMany(ai => ai.Bids)
             .WithOne(b => b.AuctionItem)
             .HasForeignKey(b => b.AuctionItemId);
+        builder.Property(ai => ai.RowVersion)
+            .IsRowVersion();
     }
 }
