@@ -7,8 +7,6 @@ public class GetAuctionItemsResponse
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public decimal InitialPrice { get; set; }
     public decimal CurrentPrice { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
