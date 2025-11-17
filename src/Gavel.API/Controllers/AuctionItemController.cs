@@ -12,11 +12,22 @@ public class AuctionItemController(IMediator mediator) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAuctionItems([FromQuery] GetAuctionItemsQuery request)
     {
-        var (items, totalCount) = await mediator.Send(request);
+        try
+        {
+            var (items, totalCount) = await mediator.Send(request);
 
-        var meta = new Meta(request.Page, request.Size, totalCount);
-        var response = ApiResponseFactory.Success(items, meta);
-        
-        return Ok(response);
+            var meta = new Meta(request.Page, request.Size, totalCount);
+            var response = ApiResponseFactory.Success(items, meta);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            var errorResponse = ApiResponseFactory.Failure<List<GetAuctionItemsResponse>>("Error", ex.Message);
+            return new ObjectResult(errorResponse)
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
+        }
     }
 }
