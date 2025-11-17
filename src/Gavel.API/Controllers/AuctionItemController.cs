@@ -32,9 +32,10 @@ public class AuctionItemController(IMediator mediator) : ControllerBase
         }
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAuctionItemById([FromQuery] GetAuctionItemByIdQuery request)
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetAuctionItemById([FromRoute] Guid id)
     {
+        var request = new GetAuctionItemByIdQuery { Id = id };
         try
         {
             var item = await mediator.Send(request);
@@ -44,7 +45,10 @@ public class AuctionItemController(IMediator mediator) : ControllerBase
         catch (Exception ex)
         {
             var errorResponse = ApiResponseFactory.Failure<GetAuctionItemByIdResponse>("Error", ex.Message);
-            return new ObjectResult(errorResponse);
+            return new ObjectResult(errorResponse)
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
         }
     }
 }
