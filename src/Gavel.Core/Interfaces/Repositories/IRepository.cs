@@ -6,5 +6,5 @@ public interface IRepository<TEntity> where TEntity : class
     /// returns all entities asynchronously
     /// </summary>
     /// <returns>A readonly collection of all entities</returns>
-    Task<IReadOnlyCollection<TEntity>> GetAllPagedAsync(int page, int pageSize);
+    Task<(IReadOnlyCollection<TEntity> Items, int TotalCount)> GetAllPagedAsync(int page, int pageSize);
 }
