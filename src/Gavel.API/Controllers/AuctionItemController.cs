@@ -1,4 +1,5 @@
 ﻿using Gavel.API.Contracts;
+using Gavel.Application.Handlers.AuctionItem.GetAuctionItemById;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +29,22 @@ public class AuctionItemController(IMediator mediator) : ControllerBase
             {
                 StatusCode = StatusCodes.Status500InternalServerError
             };
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAuctionItemById([FromQuery] GetAuctionItemByIdQuery request)
+    {
+        try
+        {
+            var item = await mediator.Send(request);
+            var response = ApiResponseFactory.Success(item);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            var errorResponse = ApiResponseFactory.Failure<GetAuctionItemByIdResponse>("Error", ex.Message);
+            return new ObjectResult(errorResponse);
         }
     }
 }

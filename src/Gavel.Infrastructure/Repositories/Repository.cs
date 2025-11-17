@@ -29,4 +29,12 @@ public class Repository<TEntity> : IRepository<TEntity> where TEntity : class
         
         return (items, totalCount);
     }
+
+    /// <summary>
+    /// find entity by id
+    /// </summary>
+    public virtual async Task<TEntity?> GetByIdAsync(Guid id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
 }

@@ -1,5 +1,6 @@
 using Gavel.API.Contracts;
 using Gavel.API.Controllers;
+using Gavel.Application.Handlers.AuctionItem.GetAuctionItemById;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -73,6 +74,31 @@ public class AuctionItemControllerTests
         Assert.NotNull(apiResponse.Errors);
         Assert.Single(apiResponse.Errors);
         Assert.Equal("Mediator error", apiResponse.Errors.First().Message);
+        
+        _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAuctionItemById_WhenCalled_ReturnsOkResult()
+    {
+        // Arrange
+        var itemId = Guid.NewGuid();
+        var request = new GetAuctionItemByIdQuery { Id = itemId };
+        var expectedItem = new GetAuctionItemByIdResponse { Id = itemId, Name = "Item 1", Description = "Description 1" };
+        var mediatorResponse = (expectedItem);
+        
+        _mockMediator
+            .Setup(m => m.Send(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mediatorResponse);
+        
+        // Act
+        var result = await _controller.GetAuctionItemById(request);
+        
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var apiResponse = Assert.IsType<ApiResponse<GetAuctionItemByIdResponse>>(okResult.Value);
+        
+        Assert.Equal(expectedItem, apiResponse.Data);
         
         _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
     }
