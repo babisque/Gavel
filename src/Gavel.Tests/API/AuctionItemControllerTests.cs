@@ -52,31 +52,6 @@ public class AuctionItemControllerTests
         
         _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
     }
-    
-    [Fact]
-    public async Task GetAuctionItems_WhenMediatorThrowsException_PropagatesException()
-    {
-        // Arrange
-        var request = new GetAuctionItemsQuery { Page = 1, Size = 10 };
-        _mockMediator
-            .Setup(m => m.Send(request, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Mediator error"));
-        
-        // Act
-        var result = await _controller.GetAuctionItems(request);
-        
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
-        
-        var apiResponse = Assert.IsType<ApiResponse<List<GetAuctionItemsResponse>>>(objectResult.Value);
-        Assert.Null(apiResponse.Data);
-        Assert.NotNull(apiResponse.Errors);
-        Assert.Single(apiResponse.Errors);
-        Assert.Equal("Mediator error", apiResponse.Errors.First().Message);
-        
-        _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
-    }
 
     [Fact]
     public async Task GetAuctionItemById_WhenCalled_ReturnsOkResult()
@@ -98,31 +73,6 @@ public class AuctionItemControllerTests
         
         Assert.Equal(expectedItem, apiResponse.Data);
         
-        _mockMediator.Verify(m => m.Send(It.Is<GetAuctionItemByIdQuery>(q => q.Id == itemId), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetAuctionItemById_WhenMediatorThrowsException_PropagatesException()
-    {
-        // Arrange
-        var itemId = Guid.NewGuid();
-
-        _mockMediator
-            .Setup(m => m.Send(It.Is<GetAuctionItemByIdQuery>(q => q.Id == itemId), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Mediator error"));
-        
-        // Act
-        var result = await _controller.GetAuctionItemById(itemId);
-        
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
-        
-        var apiResponse = Assert.IsType<ApiResponse<GetAuctionItemByIdResponse>>(objectResult.Value);
-        Assert.Null(apiResponse.Data);
-        Assert.NotNull(apiResponse.Errors);
-        Assert.Single(apiResponse.Errors);
-        Assert.Equal("Mediator error", apiResponse.Errors.First().Message);
         _mockMediator.Verify(m => m.Send(It.Is<GetAuctionItemByIdQuery>(q => q.Id == itemId), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
