@@ -14,5 +14,4 @@ public class GetAuctionItemsResponse
     public DateTime EndTime { get; set; }
     public AuctionStatus Status { get; set; } = AuctionStatus.Pending;
     public byte[] RowVersion { get; set; }
-    public virtual ICollection<Bid> Bids { get; set; } = new HashSet<Bid>();
 }
