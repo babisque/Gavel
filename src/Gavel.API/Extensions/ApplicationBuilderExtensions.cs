@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.HttpOverrides;
+﻿using Gavel.API.Contracts;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace Gavel.API.Extensions;
 
@@ -24,6 +26,22 @@ public static class ApplicationBuilderExtensions
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gavel API V1");
             });
         }
+
+        app.UseExceptionHandler(exceptionHandlerApp =>
+        {
+            exceptionHandlerApp.Run(async context =>
+            {
+                var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+                if (exception is not null)
+                {
+                    context.Response.ContentType = "application/json";
+                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+                    var errorResponse = ApiResponseFactory.Failure<object>("Error", exception.Message);
+                    await context.Response.WriteAsJsonAsync(errorResponse);
+                }
+            });
+        });
 
         app.UseCors("_myAllowSpecificOrigins");
 

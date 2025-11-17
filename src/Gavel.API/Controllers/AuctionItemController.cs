@@ -13,42 +13,20 @@ public class AuctionItemController(IMediator mediator) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAuctionItems([FromQuery] GetAuctionItemsQuery request)
     {
-        try
-        {
-            var (items, totalCount) = await mediator.Send(request);
+        var (items, totalCount) = await mediator.Send(request);
 
-            var meta = new Meta(request.Page, request.Size, totalCount);
-            var response = ApiResponseFactory.Success(items, meta);
+        var meta = new Meta(request.Page, request.Size, totalCount);
+        var response = ApiResponseFactory.Success(items, meta);
 
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            var errorResponse = ApiResponseFactory.Failure<List<GetAuctionItemsResponse>>("Error", ex.Message);
-            return new ObjectResult(errorResponse)
-            {
-                StatusCode = StatusCodes.Status500InternalServerError
-            };
-        }
+        return Ok(response);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetAuctionItemById([FromRoute] Guid id)
     {
         var request = new GetAuctionItemByIdQuery { Id = id };
-        try
-        {
-            var item = await mediator.Send(request);
-            var response = ApiResponseFactory.Success(item);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            var errorResponse = ApiResponseFactory.Failure<GetAuctionItemByIdResponse>("Error", ex.Message);
-            return new ObjectResult(errorResponse)
-            {
-                StatusCode = StatusCodes.Status500InternalServerError
-            };
-        }
+        var item = await mediator.Send(request);
+        var response = ApiResponseFactory.Success(item);
+        return Ok(response);
     }
 }
