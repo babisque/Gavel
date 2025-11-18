@@ -3,6 +3,7 @@ using Gavel.Application.Exceptions;
 using Gavel.Application.Handlers.Bid.PlaceBid;
 using Gavel.Application.Interfaces;
 using Gavel.Domain.Enums;
+using Gavel.Domain.Interfaces;
 using Gavel.Domain.Interfaces.Repositories;
 using MediatR;
 
@@ -10,7 +11,8 @@ namespace Gavel.Application.Handlers.Bids.PlaceBid;
 
 public class PlaceBidHandler(
     IBidRepository bidRepository, 
-    IAuctionItemRepository auctionItemRepository, 
+    IAuctionItemRepository auctionItemRepository,
+    IUnitOfWork unitOfWork,
     IBidNotificationService bidNotificationService, 
     IMapper mapper)
     : IRequestHandler<PlaceBidCommand>
@@ -30,13 +32,14 @@ public class PlaceBidHandler(
         
         var bid = mapper.Map<Domain.Entities.Bid>(request);
         bid.TimeStamp = DateTime.UtcNow;
+        await unitOfWork.Bids.CreateAsync(bid);
 
         var createdBid = await bidRepository.CreateAsync(bid);
         auctionItem.CurrentPrice = request.Amount;
+        await unitOfWork.AuctionItems.UpdateAsync(auctionItem);
 
-        await auctionItemRepository.UpdateAsync(auctionItem);
-        
+        await unitOfWork.CompleteAsync(cancellationToken);
+            
         await bidNotificationService.NotifyNewBidAsync(createdBid);
-
     }
 }

@@ -30,7 +30,6 @@ public abstract class Repository<TEntity> : IRepository<TEntity> where TEntity :
     public virtual async Task<TEntity> CreateAsync(TEntity entity)
     {
         await _dbSet.AddAsync(entity);
-        await _context.SaveChangesAsync();
         return entity;
     }
 
@@ -40,7 +39,6 @@ public abstract class Repository<TEntity> : IRepository<TEntity> where TEntity :
     public virtual async Task<TEntity> UpdateAsync(TEntity entity)
     {
         _dbSet.Update(entity);
-        await _context.SaveChangesAsync();
         return entity;
     }
 }
