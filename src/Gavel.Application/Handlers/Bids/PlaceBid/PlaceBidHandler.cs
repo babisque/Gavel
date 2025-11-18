@@ -4,14 +4,11 @@ using Gavel.Application.Handlers.Bid.PlaceBid;
 using Gavel.Application.Interfaces;
 using Gavel.Domain.Enums;
 using Gavel.Domain.Interfaces;
-using Gavel.Domain.Interfaces.Repositories;
 using MediatR;
 
 namespace Gavel.Application.Handlers.Bids.PlaceBid;
 
 public class PlaceBidHandler(
-    IBidRepository bidRepository, 
-    IAuctionItemRepository auctionItemRepository,
     IUnitOfWork unitOfWork,
     IBidNotificationService bidNotificationService, 
     IMapper mapper)
@@ -20,7 +17,7 @@ public class PlaceBidHandler(
 
     public async Task Handle(PlaceBidCommand request, CancellationToken cancellationToken)
     {
-        var auctionItem = await auctionItemRepository.GetByIdAsync(request.AuctionItemId);
+        var auctionItem = await unitOfWork.AuctionItems.GetByIdAsync(request.AuctionItemId);
         if (auctionItem is null)
             throw new NotFoundException($"Auction item with ID {request.AuctionItemId} not found.");
         

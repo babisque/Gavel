@@ -16,8 +16,8 @@ public class PlaceBidHandlerTests
     private readonly Mock<IBidRepository> _mockBidRepository;
     private readonly Mock<IAuctionItemRepository> _mockAuctionItemRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-    private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IBidNotificationService> _bidNotificationService;
+    private readonly Mock<IMapper> _mockMapper;
     private readonly PlaceBidHandler _bidHandler;
 
     public PlaceBidHandlerTests()
@@ -32,8 +32,6 @@ public class PlaceBidHandlerTests
         _mockUnitOfWork.Setup(uow => uow.AuctionItems).Returns(_mockAuctionItemRepository.Object);
 
         _bidHandler = new PlaceBidHandler(
-            _mockBidRepository.Object,
-            _mockAuctionItemRepository.Object,
             _mockUnitOfWork.Object,
             _bidNotificationService.Object,
             _mockMapper.Object);

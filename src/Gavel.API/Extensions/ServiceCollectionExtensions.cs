@@ -3,10 +3,9 @@ using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using Gavel.Application.Interfaces;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Interfaces;
-using Gavel.Domain.Interfaces.Repositories;
 using Gavel.Infrastructure;
-using Gavel.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 
 namespace Gavel.API.Extensions;
 
@@ -57,7 +56,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo { Title = "Gavel API", Version = "v1" });
+            c.SwaggerDoc("v1", new OpenApiInfo { Title = "Gavel API", Version = "v1" });
         });
 
         return services;
@@ -65,7 +64,7 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        services.AddScoped<IAuctionItemRepository, AuctionItemRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
 
