@@ -21,4 +21,11 @@ public interface IRepository<TEntity> where TEntity : class
     /// <param name="entity">The entity to create</param>
     /// <returns>The created entity</returns>
     Task<TEntity> CreateAsync(TEntity entity);
+    
+    /// <summary>
+    /// updates an existing entity asynchronously
+    /// </summary>
+    /// <param name="entity">The entity to update</param>
+    /// <returns>The updated entity</returns>
+    Task<TEntity> UpdateAsync(TEntity entity);
 }

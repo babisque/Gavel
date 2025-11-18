@@ -33,4 +33,14 @@ public abstract class Repository<TEntity> : IRepository<TEntity> where TEntity :
         await _context.SaveChangesAsync();
         return entity;
     }
+
+    /// <summary>
+    /// Update existing entity
+    /// </summary>
+    public virtual async Task<TEntity> UpdateAsync(TEntity entity)
+    {
+        _dbSet.Update(entity);
+        await _context.SaveChangesAsync();
+        return entity;
+    }
 }
