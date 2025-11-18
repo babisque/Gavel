@@ -32,9 +32,8 @@ public class PlaceBidHandler(
         
         var bid = mapper.Map<Domain.Entities.Bid>(request);
         bid.TimeStamp = DateTime.UtcNow;
-        await unitOfWork.Bids.CreateAsync(bid);
+        var createdBid = await unitOfWork.Bids.CreateAsync(bid);
 
-        var createdBid = await bidRepository.CreateAsync(bid);
         auctionItem.CurrentPrice = request.Amount;
         await unitOfWork.AuctionItems.UpdateAsync(auctionItem);
 
