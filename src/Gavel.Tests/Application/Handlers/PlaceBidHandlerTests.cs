@@ -67,7 +67,7 @@ public class PlaceBidHandlerTests
         // Arrange
         var command = new PlaceBidCommand { AuctionItemId = Guid.NewGuid() };
         _mockAuctionItemRepository.Setup(r => r.GetByIdAsync(command.AuctionItemId))
-            .ReturnsAsync((AuctionItem)null);
+            .ReturnsAsync((AuctionItem)null!);
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() => _bidHandler.Handle(command, CancellationToken.None));

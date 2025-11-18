@@ -1,22 +1,37 @@
 using AutoMapper;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
+using Gavel.Application.Profiles;
 using Gavel.Domain.Entities;
-using Gavel.Domain.Interfaces.Repositories;
-using Moq;
+using Gavel.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Gavel.Tests.Application.Handlers;
 
-public class GetAuctionItemsHandlerTests
+public class GetAuctionItemsHandlerTests : IDisposable
 {
-    private readonly Mock<IAuctionItemRepository> _mockRepository;
-    private readonly Mock<IMapper> _mockMapper;
+    private readonly ApplicationDbContext _context;
+    private readonly IMapper _mapper;
     private readonly GetAuctionItemsHandler _handler;
 
     public GetAuctionItemsHandlerTests()
     {
-        _mockRepository = new Mock<IAuctionItemRepository>();
-        _mockMapper = new Mock<IMapper>();
-        _handler = new GetAuctionItemsHandler(_mockRepository.Object, _mockMapper.Object);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) 
+            .Options;
+
+        _context = new ApplicationDbContext(options);
+
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var mapperConfig = new MapperConfiguration(cfg =>
+        {
+            cfg.LicenseKey = string.Empty;
+            cfg.AddProfile<AuctionItemsMapper>();
+            cfg.AddProfile<BidMapper>();
+        }, loggerFactory);
+        _mapper = mapperConfig.CreateMapper();
+
+        _handler = new GetAuctionItemsHandler(_context, _mapper);
     }
 
     [Fact]
@@ -28,34 +43,26 @@ public class GetAuctionItemsHandlerTests
 
         var dbItems = new List<AuctionItem>
         {
-            new() { Id = Guid.NewGuid(), Name = "Item 1" },
-            new() { Id = Guid.NewGuid(), Name = "Item 2" }
+            new() { Id = Guid.NewGuid(), Name = "Item 1", StartTime = DateTime.UtcNow.AddDays(1), RowVersion = new byte[8] },
+            new() { Id = Guid.NewGuid(), Name = "Item 2", StartTime = DateTime.UtcNow.AddDays(2), RowVersion = new byte[8] }
         };
-        var expectedTotalCount = 2;
-        var repositoryResponse = (Items: (IReadOnlyCollection<AuctionItem>)dbItems, TotalCount: expectedTotalCount);
         
-        var mappedItems = new List<GetAuctionItemsResponse>
-        {
-            new() { Id = dbItems[0].Id, Name = "Item 1" },
-            new() { Id = dbItems[1].Id, Name = "Item 2" }
-        };
-
-        _mockRepository
-            .Setup(r => r.GetAllPagedAsync(request.Page, request.Size))
-            .ReturnsAsync(repositoryResponse);
-
-        _mockMapper
-            .Setup(m => m.Map<List<GetAuctionItemsResponse>>(dbItems))
-            .Returns(mappedItems);
+        await _context.AuctionItems.AddRangeAsync(dbItems, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
         
         // Act
         var (resultItems, resultTotalCount) = await _handler.Handle(request, cancellationToken);
         
         // Assert
-        Assert.Equal(mappedItems, resultItems);
-        Assert.Equal(expectedTotalCount, resultTotalCount);
-        
-        _mockRepository.Verify(r => r.GetAllPagedAsync(request.Page, request.Size), Times.Once);
-        _mockMapper.Verify(m => m.Map<List<GetAuctionItemsResponse>>(dbItems), Times.Once);
+        Assert.Equal(2, resultTotalCount);
+        Assert.Equal(2, resultItems.Count);
+        Assert.Equal("Item 1", resultItems[0].Name);
+        Assert.Equal("Item 2", resultItems[1].Name);
+    }
+    
+    public void Dispose()
+    {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
     }
 }
