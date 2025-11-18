@@ -14,4 +14,11 @@ public interface IRepository<TEntity> where TEntity : class
     /// <param name="id">The unique identifier of the entity</param>
     /// <returns>The entity if found; otherwise, null</returns>
     Task<TEntity?> GetByIdAsync(Guid id);
+    
+    /// <summary>
+    /// creates a new entity asynchronously
+    /// </summary>
+    /// <param name="entity">The entity to create</param>
+    /// <returns>The created entity</returns>
+    Task<TEntity> CreateAsync(TEntity entity);
 }

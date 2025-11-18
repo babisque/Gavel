@@ -1,4 +1,6 @@
-﻿using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
+﻿using Gavel.API.Services;
+using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
+using Gavel.Application.Interfaces;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Interfaces;
 using Gavel.Domain.Interfaces.Repositories;
@@ -17,7 +19,8 @@ public static class ServiceCollectionExtensions
             .AddCustomCors(configuration)
             .AddSwagger()
             .AddRepositories()
-            .AddApplicationServices(configuration);
+            .AddApplicationServices(configuration)
+            .AddSignalR();
     }
 
     private static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
@@ -78,6 +81,8 @@ public static class ServiceCollectionExtensions
             cfg.RegisterServicesFromAssembly(typeof(GetAuctionItemsHandler).Assembly);
             cfg.LicenseKey = configuration.GetSection("LuckyPenny:LicenseKey").Value;
         });
+        services.AddScoped<IBidNotificationService, SignalRBidNotificationService>();
+        
         return services;
     }
 

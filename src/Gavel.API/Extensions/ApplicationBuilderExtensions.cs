@@ -1,4 +1,5 @@
 ﻿using Gavel.API.Contracts;
+using Gavel.API.Hubs;
 using Gavel.Application.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -50,6 +51,8 @@ public static class ApplicationBuilderExtensions
         });
 
         app.UseCors("_myAllowSpecificOrigins");
+
+        app.MapHub<BidHub>("hubs/bidHub");
 
         app.UseAuthentication();
         app.UseAuthorization();

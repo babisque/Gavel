@@ -1,4 +1,3 @@
-using Gavel.Domain.Entities;
 using Gavel.Domain.Enums;
 
 namespace Gavel.Application.Handlers.AuctionItem.GetAuctionItemById;
@@ -14,5 +13,5 @@ public class GetAuctionItemByIdResponse
     public DateTime EndTime { get; set; }
     public AuctionStatus Status { get; set; } = AuctionStatus.Pending;
     public byte[] RowVersion { get; set; }
-    public virtual ICollection<Bid> Bids { get; set; } = new HashSet<Bid>();
+    public virtual ICollection<Domain.Entities.Bid> Bids { get; set; } = new HashSet<Domain.Entities.Bid>();
 }
