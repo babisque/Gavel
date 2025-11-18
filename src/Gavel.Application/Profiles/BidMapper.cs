@@ -6,6 +6,6 @@ public class BidMapper : Profile
 {
     public BidMapper()
     {
-        CreateMap<Domain.Entities.Bid, Handlers.Bid.PlaceBid.PlaceBidCommand>();
+        CreateMap<Handlers.Bid.PlaceBid.PlaceBidCommand, Domain.Entities.Bid>().ReverseMap();
     }
 }
