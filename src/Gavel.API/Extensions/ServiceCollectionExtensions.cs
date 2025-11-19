@@ -6,6 +6,7 @@ using Gavel.Domain.Interfaces;
 using Gavel.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using Quartz;
 
 namespace Gavel.API.Extensions;
 
@@ -19,6 +20,7 @@ public static class ServiceCollectionExtensions
             .AddSwagger()
             .AddRepositories()
             .AddApplicationServices(configuration)
+            .AddQuartzConfiguration(configuration)
             .AddSignalR();
     }
 
@@ -85,4 +87,40 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    private static IServiceCollection AddQuartzConfiguration(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<QuartzOptions>(configuration.GetSection("Quartz"));
+        
+        services.Configure<QuartzOptions>(opts =>
+        {
+            opts.Scheduling.IgnoreDuplicates = true;
+            opts.Scheduling.OverWriteExistingData = true;
+        });
+
+        services.AddQuartz(q =>
+        {
+            q.SchedulerId = "QuartzScheduler";
+
+            q.UseSimpleTypeLoader();
+            
+            q.UsePersistentStore(s =>
+            {
+                s.UseProperties = true;
+                
+                s.UseSqlServer(sqlServer =>
+                {
+                    sqlServer.ConnectionString = configuration.GetConnectionString("SqlServerConnection");
+                });
+                
+                s.UseJsonSerializer();
+            });
+            
+            q.UseDefaultThreadPool(tp =>
+            {
+                tp.MaxConcurrency = 10;
+            });
+        });
+        
+        return services;
+    }
 }

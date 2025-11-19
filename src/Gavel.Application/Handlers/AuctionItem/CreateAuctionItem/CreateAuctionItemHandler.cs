@@ -1,0 +1,39 @@
+using AutoMapper;
+using Gavel.Domain.Enums;
+using Gavel.Domain.Interfaces;
+using Gavel.Infrastructure.Jobs;
+using MediatR;
+using Quartz;
+
+namespace Gavel.Application.Handlers.AuctionItem.CreateAuctionItem;
+
+public class CreateAuctionItemHandler(IUnitOfWork unitOfWork,
+    ISchedulerFactory schedulerFactory,
+    IMapper mapper) : IRequestHandler<CreateAuctionItemCommand, Guid>
+{
+    public async Task<Guid> Handle(CreateAuctionItemCommand request, CancellationToken cancellationToken)
+    {
+        var auctionItem = mapper.Map<Domain.Entities.AuctionItem>(request);
+        auctionItem.Status = AuctionStatus.Active;
+        auctionItem.StartTime = DateTime.UtcNow;
+        auctionItem.CurrentPrice = request.InitialPrice;
+        await unitOfWork.AuctionItems.CreateAsync(auctionItem);
+        await unitOfWork.CompleteAsync(cancellationToken);
+        
+        var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
+
+        var job = JobBuilder.Create<CloseAuctionJob>()
+            .WithIdentity($"CloseAuctionJob-{auctionItem.Id}", "AuctionClosers")
+            .UsingJobData("AuctionItemId", auctionItem.Id.ToString())
+            .Build();
+
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity($"Trigger-{auctionItem.Id}", "AuctionClosers")
+            .StartAt(auctionItem.EndTime)
+            .Build();
+        
+        await scheduler.ScheduleJob(job, trigger, cancellationToken);
+        
+        return auctionItem.Id;
+    }
+}
