@@ -46,7 +46,7 @@ public static class ApplicationBuilderExtensions
                         _ => StatusCodes.Status500InternalServerError
                     };
 
-                    if (exception is FluentValidation.ValidationException validationException) // <--- Specify namespace here
+                    if (exception is FluentValidation.ValidationException validationException)
                     {
                         var errors = validationException.Errors.Select(e => 
                             new Domain.ErrorItem(e.ErrorCode, e.PropertyName, e.ErrorMessage));
