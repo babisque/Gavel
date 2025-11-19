@@ -5,6 +5,7 @@ using Gavel.Application.Interfaces;
 using Gavel.Domain.Enums;
 using Gavel.Domain.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Gavel.Application.Handlers.Bids.PlaceBid;
 
@@ -34,7 +35,14 @@ public class PlaceBidHandler(
         auctionItem.CurrentPrice = request.Amount;
         await unitOfWork.AuctionItems.UpdateAsync(auctionItem);
 
-        await unitOfWork.CompleteAsync(cancellationToken);
+        try
+        {
+            await unitOfWork.CompleteAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("The price has changed since you loaded the page. Please refresh and try again.");
+        }
             
         await bidNotificationService.NotifyNewBidAsync(createdBid);
     }
