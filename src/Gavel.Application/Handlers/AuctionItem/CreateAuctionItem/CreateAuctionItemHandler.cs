@@ -37,19 +37,5 @@ public class CreateAuctionItemHandler(IUnitOfWork unitOfWork,
         await unitOfWork.CompleteAsync(cancellationToken);
         
         return auctionItem.Id;
-        
-        /*var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
-
-        var job = JobBuilder.Create<CloseAuctionJob>()
-            .WithIdentity($"CloseAuctionJob-{auctionItem.Id}", "AuctionClosers")
-            .UsingJobData("AuctionItemId", auctionItem.Id.ToString())
-            .Build();
-
-        var trigger = TriggerBuilder.Create()
-            .WithIdentity($"Trigger-{auctionItem.Id}", "AuctionClosers")
-            .StartAt(auctionItem.EndTime)
-            .Build();
-        
-        await scheduler.ScheduleJob(job, trigger, cancellationToken);*/
     }
 }
