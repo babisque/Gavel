@@ -19,14 +19,6 @@ public class PlaceBidHandler(
     public async Task Handle(PlaceBidCommand request, CancellationToken cancellationToken)
     {
         var auctionItem = await unitOfWork.AuctionItems.GetByIdAsync(request.AuctionItemId);
-        if (auctionItem is null)
-            throw new NotFoundException($"Auction item with ID {request.AuctionItemId} not found.");
-        
-        if (auctionItem.Status is not AuctionStatus.Active)
-            throw new ApplicationException($"Auction item with ID {request.AuctionItemId} is not active.");
-        
-        if (request.Amount <= auctionItem.CurrentPrice)
-            throw new ApplicationException($"Bid amount must be greater than the current price of {auctionItem.CurrentPrice}.");
         
         var bid = mapper.Map<Domain.Entities.Bid>(request);
         bid.TimeStamp = DateTime.UtcNow;

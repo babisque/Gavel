@@ -1,9 +1,13 @@
-﻿using Gavel.API.Services;
+﻿using FluentValidation;
+using Gavel.API.Services;
+using Gavel.Application.Behaviors;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
+using Gavel.Application.Handlers.Bid.PlaceBid;
 using Gavel.Application.Interfaces;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Interfaces;
 using Gavel.Infrastructure;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Quartz;
@@ -72,6 +76,8 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddValidatorsFromAssembly(typeof(PlaceBidCommand).Assembly);
+        
         services.AddAutoMapper(cfg =>
         {
             cfg.AddMaps(typeof(AuctionItemsMapper).Assembly);
@@ -80,6 +86,7 @@ public static class ServiceCollectionExtensions
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(GetAuctionItemsHandler).Assembly);
+            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
             cfg.LicenseKey = configuration.GetSection("LuckyPenny:LicenseKey").Value;
         });
         services.AddScoped<IBidNotificationService, SignalRBidNotificationService>();
