@@ -8,6 +8,7 @@ public class UnitOfWork(ApplicationDbContext context) : IUnitOfWork
 {
     public IAuctionItemRepository AuctionItems { get; } = new AuctionItemRepository(context);
     public IBidRepository Bids { get; } = new BidRepository(context);
+    public IOutboxMessageRepository OutboxMessages { get; } = new OutboxMessageRepository(context);
     
     public async Task<int> CompleteAsync(CancellationToken cancellationToken = default)
     {

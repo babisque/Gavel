@@ -7,6 +7,7 @@ using Gavel.Application.Interfaces;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Interfaces;
 using Gavel.Infrastructure;
+using Gavel.Infrastructure.BackgroundServices;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -90,6 +91,7 @@ public static class ServiceCollectionExtensions
             cfg.LicenseKey = configuration.GetSection("LuckyPenny:LicenseKey").Value;
         });
         services.AddScoped<IBidNotificationService, SignalRBidNotificationService>();
+        services.AddHostedService<OutboxProcessor>();
         
         return services;
     }

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using AutoMapper;
+using Gavel.Domain.Entities;
 using Gavel.Domain.Enums;
 using Gavel.Domain.Interfaces;
 using Gavel.Infrastructure.Jobs;
@@ -17,10 +19,26 @@ public class CreateAuctionItemHandler(IUnitOfWork unitOfWork,
         auctionItem.Status = AuctionStatus.Active;
         auctionItem.StartTime = DateTime.UtcNow;
         auctionItem.CurrentPrice = request.InitialPrice;
+        
         await unitOfWork.AuctionItems.CreateAsync(auctionItem);
+
+        var jobIntent = new
+        {
+            AuctionItemId = auctionItem.Id,
+            EndTime = auctionItem.EndTime
+        };
+
+        var message = new OutboxMessage
+        {
+            Type = "ScheduleAuctionClose",
+            Payload = JsonSerializer.Serialize(jobIntent)
+        };
+
         await unitOfWork.CompleteAsync(cancellationToken);
         
-        var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
+        return auctionItem.Id;
+        
+        /*var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
 
         var job = JobBuilder.Create<CloseAuctionJob>()
             .WithIdentity($"CloseAuctionJob-{auctionItem.Id}", "AuctionClosers")
@@ -32,8 +50,6 @@ public class CreateAuctionItemHandler(IUnitOfWork unitOfWork,
             .StartAt(auctionItem.EndTime)
             .Build();
         
-        await scheduler.ScheduleJob(job, trigger, cancellationToken);
-        
-        return auctionItem.Id;
+        await scheduler.ScheduleJob(job, trigger, cancellationToken);*/
     }
 }

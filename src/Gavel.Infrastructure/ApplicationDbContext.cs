@@ -7,6 +7,7 @@ public class ApplicationDbContext : DbContext
 {
     public DbSet<AuctionItem> AuctionItems { get; set; }
     public DbSet<Bid> Bids { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
