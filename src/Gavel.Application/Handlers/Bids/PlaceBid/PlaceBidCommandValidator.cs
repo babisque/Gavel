@@ -9,7 +9,7 @@ public class PlaceBidCommandValidator : AbstractValidator<PlaceBidCommand>
         RuleFor(x => x.AuctionItemId)
             .NotEmpty().WithMessage("Auction item ID is required.");
         
-        RuleFor(x => x.BidderId)
+        RuleFor(x => x.BidderName)
             .NotEmpty().WithMessage("Bidder ID is required.");
 
         RuleFor(x => x.Amount)
