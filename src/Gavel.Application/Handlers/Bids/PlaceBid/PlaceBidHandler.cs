@@ -15,7 +15,6 @@ public class PlaceBidHandler(
     IMapper mapper)
     : IRequestHandler<PlaceBidCommand>
 {
-
     public async Task Handle(PlaceBidCommand request, CancellationToken cancellationToken)
     {
         var auctionItem = await unitOfWork.AuctionItems.GetByIdAsync(request.AuctionItemId);
