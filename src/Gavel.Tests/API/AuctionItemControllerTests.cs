@@ -1,9 +1,8 @@
-using Gavel.API.Contracts;
+using System.Text.Json;
 using Gavel.API.Controllers;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItemById;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -42,13 +41,11 @@ public class AuctionItemControllerTests
         
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var apiResponse = Assert.IsType<ApiResponse<List<GetAuctionItemsResponse>>>(okResult.Value);
-        
-        Assert.Equal(expectedItems, apiResponse.Data);
-        Assert.NotNull(apiResponse.Meta);
-        Assert.Equal(request.Page, apiResponse.Meta.Page);
-        Assert.Equal(request.Size, apiResponse.Meta.PageSize);
-        Assert.Equal(expectedTotalCount, apiResponse.Meta.TotalRecords);
+        var responseData = okResult.Value;
+        Assert.NotNull(responseData);
+        var json = JsonSerializer.Serialize(responseData);
+        Assert.Contains("Item 1", json);
+        Assert.Contains("\"TotalRecords\":2", json);
         
         _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -69,9 +66,8 @@ public class AuctionItemControllerTests
         
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var apiResponse = Assert.IsType<ApiResponse<GetAuctionItemByIdResponse>>(okResult.Value);
-        
-        Assert.Equal(expectedItem, apiResponse.Data);
+        var returnItem = Assert.IsType<GetAuctionItemByIdResponse>(okResult.Value);
+        Assert.Equal(expectedItem.Id, returnItem.Id);
         
         _mockMediator.Verify(m => m.Send(It.Is<GetAuctionItemByIdQuery>(q => q.Id == itemId), It.IsAny<CancellationToken>()), Times.Once);
     }

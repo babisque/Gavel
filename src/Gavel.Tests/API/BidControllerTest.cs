@@ -1,4 +1,3 @@
-using Gavel.API.Contracts;
 using Gavel.API.Controllers;
 using Gavel.Application.Handlers.Bids.PlaceBid;
 using MediatR;
@@ -38,10 +37,12 @@ public class BidControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
+        
+        var val = okResult.Value;
+        var messageProperty = val.GetType().GetProperty("message");
+        var messageValue = messageProperty.GetValue(val, null) as string;
 
-        // You can also add this to check the response
-        var apiResponse = Assert.IsType<ApiResponse<string>>(okResult.Value);
-        Assert.Equal("Bid placed successfully.", apiResponse.Data);
+        Assert.Equal("Bid placed successfully.", messageValue);
         
         _mediator.Verify(m => m.Send(It.Is<PlaceBidCommand>(cmd =>
             cmd.AuctionItemId == request.AuctionItemId &&

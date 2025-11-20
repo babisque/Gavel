@@ -41,7 +41,14 @@ public class PlaceBidHandlerTests
     {
         // Arrange
         var command = new PlaceBidCommand { AuctionItemId = Guid.NewGuid(), Amount = 150 };
-        var auctionItem = new AuctionItem { Id = command.AuctionItemId, CurrentPrice = 100, Status = AuctionStatus.Active };
+        var auctionItem = new AuctionItem 
+        { 
+            Id = command.AuctionItemId, 
+            CurrentPrice = 100, 
+            Status = AuctionStatus.Active,
+            EndTime = DateTime.UtcNow.AddDays(1)
+        };
+
         var bid = new Bid { Id = Guid.NewGuid(), AuctionItemId = command.AuctionItemId, Amount = command.Amount };
 
         _mockAuctionItemRepository.Setup(r => r.GetByIdAsync(command.AuctionItemId))
@@ -82,7 +89,7 @@ public class PlaceBidHandlerTests
             .ReturnsAsync(auctionItem);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ApplicationException>(() => _bidHandler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<ConflictException>(() => _bidHandler.Handle(command, CancellationToken.None));
     }
 
     [Fact]
@@ -90,11 +97,17 @@ public class PlaceBidHandlerTests
     {
         // Arrange
         var command = new PlaceBidCommand { AuctionItemId = Guid.NewGuid(), Amount = 50 };
-        var auctionItem = new AuctionItem { Id = command.AuctionItemId, CurrentPrice = 100, Status = AuctionStatus.Active };
+        var auctionItem = new AuctionItem 
+        { 
+            Id = command.AuctionItemId, 
+            CurrentPrice = 100, 
+            Status = AuctionStatus.Active,
+            EndTime = DateTime.UtcNow.AddDays(1)
+        };
         _mockAuctionItemRepository.Setup(r => r.GetByIdAsync(command.AuctionItemId))
             .ReturnsAsync(auctionItem);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ApplicationException>(() => _bidHandler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<ConflictException>(() => _bidHandler.Handle(command, CancellationToken.None));
     }
 }

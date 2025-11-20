@@ -1,4 +1,3 @@
-using Gavel.API.Contracts;
 using Gavel.Application.Handlers.Bids.PlaceBid;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +12,6 @@ public class BidController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> PlaceBid([FromBody] PlaceBidCommand request)
     {
         await mediator.Send(request);
-        var response = ApiResponseFactory.Success("Bid placed successfully.");
-        return Ok(response);
+        return Ok(new { message = "Bid placed successfully." });
     }
 }

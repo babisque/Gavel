@@ -28,7 +28,7 @@ public class CreateAuctionItemHandler(IUnitOfWork unitOfWork,
             EndTime = auctionItem.EndTime
         };
 
-        var message = new OutboxMessage
+        new OutboxMessage
         {
             Type = "ScheduleAuctionClose",
             Payload = JsonSerializer.Serialize(jobIntent)

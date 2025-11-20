@@ -1,8 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Gavel.API.Contracts;
-using Gavel.API.Hubs;
-using Gavel.Domain.Exceptions;
-using Microsoft.AspNetCore.Diagnostics;
+﻿using Gavel.API.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
 
 namespace Gavel.API.Extensions;
@@ -31,6 +27,7 @@ public static class ApplicationBuilderExtensions
         }
 
         app.UseExceptionHandler();
+        app.UseStatusCodePages();
 
         app.UseCors("_myAllowSpecificOrigins");
 
