@@ -22,6 +22,9 @@ public class PlaceBidHandler(
         var bid = mapper.Map<Bid>(request);
         bid.TimeStamp = DateTime.UtcNow;
         var createdBid = await unitOfWork.Bids.CreateAsync(bid);
+        
+        if (request.Amount <= auctionItem.CurrentPrice)
+            throw new ConflictException("Bid must be higher than current price.");
 
         auctionItem.CurrentPrice = request.Amount;
         await unitOfWork.AuctionItems.UpdateAsync(auctionItem);
