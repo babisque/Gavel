@@ -1,9 +1,8 @@
 using AutoMapper;
-using Gavel.Application.Exceptions;
-using Gavel.Application.Handlers.Bid.PlaceBid;
-using Gavel.Application.Interfaces;
-using Gavel.Domain.Enums;
+using Gavel.Domain.Entities;
+using Gavel.Domain.Exceptions;
 using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +19,7 @@ public class PlaceBidHandler(
     {
         var auctionItem = await unitOfWork.AuctionItems.GetByIdAsync(request.AuctionItemId);
         
-        var bid = mapper.Map<Domain.Entities.Bid>(request);
+        var bid = mapper.Map<Bid>(request);
         bid.TimeStamp = DateTime.UtcNow;
         var createdBid = await unitOfWork.Bids.CreateAsync(bid);
 

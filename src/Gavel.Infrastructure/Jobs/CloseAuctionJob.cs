@@ -1,11 +1,14 @@
 using Gavel.Domain.Enums;
 using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
 namespace Gavel.Infrastructure.Jobs;
 
-public class CloseAuctionJob(IUnitOfWork unitOfWork, ILogger<CloseAuctionJob> logger) : IJob
+public class CloseAuctionJob(IUnitOfWork unitOfWork,
+    IBidNotificationService bidNotificationService,
+    ILogger<CloseAuctionJob> logger) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
@@ -22,6 +25,6 @@ public class CloseAuctionJob(IUnitOfWork unitOfWork, ILogger<CloseAuctionJob> lo
         await unitOfWork.AuctionItems.UpdateAsync(item);
         await unitOfWork.CompleteAsync();
         
-        // TODO: Notify via SignalR
+        await bidNotificationService.NotifyAuctionClosedAsync(auctionItemId);
     }
 }

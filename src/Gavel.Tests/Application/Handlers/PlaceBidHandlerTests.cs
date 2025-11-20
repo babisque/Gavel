@@ -1,12 +1,11 @@
 using AutoMapper;
-using Gavel.Application.Exceptions;
-using Gavel.Application.Handlers.Bid.PlaceBid;
 using Gavel.Application.Handlers.Bids.PlaceBid;
-using Gavel.Application.Interfaces;
 using Gavel.Domain.Entities;
 using Gavel.Domain.Enums;
+using Gavel.Domain.Exceptions;
 using Gavel.Domain.Interfaces;
 using Gavel.Domain.Interfaces.Repositories;
+using Gavel.Domain.Interfaces.Services;
 using Moq;
 
 namespace Gavel.Tests.Application.Handlers;

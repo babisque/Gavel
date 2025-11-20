@@ -1,5 +1,4 @@
 using FluentValidation;
-using Gavel.Application.Handlers.Bid.PlaceBid;
 
 namespace Gavel.Application.Handlers.Bids.PlaceBid;
 

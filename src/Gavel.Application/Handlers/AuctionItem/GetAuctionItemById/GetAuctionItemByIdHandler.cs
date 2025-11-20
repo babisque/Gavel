@@ -1,5 +1,5 @@
 using AutoMapper;
-using Gavel.Application.Exceptions;
+using Gavel.Domain.Exceptions;
 using Gavel.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

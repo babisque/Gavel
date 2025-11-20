@@ -1,5 +1,5 @@
 using Gavel.API.Contracts;
-using Gavel.Application.Handlers.Bid.PlaceBid;
+using Gavel.Application.Handlers.Bids.PlaceBid;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

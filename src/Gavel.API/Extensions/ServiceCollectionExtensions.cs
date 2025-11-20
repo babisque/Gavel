@@ -2,10 +2,10 @@
 using Gavel.API.Services;
 using Gavel.Application.Behaviors;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
-using Gavel.Application.Handlers.Bid.PlaceBid;
-using Gavel.Application.Interfaces;
+using Gavel.Application.Handlers.Bids.PlaceBid;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Services;
 using Gavel.Infrastructure;
 using Gavel.Infrastructure.BackgroundServices;
 using MediatR;
@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
             .AddRepositories()
             .AddApplicationServices(configuration)
             .AddQuartzConfiguration(configuration)
+            .AddExceptionHandling()
             .AddSignalR();
     }
 
@@ -130,6 +131,13 @@ public static class ServiceCollectionExtensions
             });
         });
         
+        return services;
+    }
+
+    public static IServiceCollection AddExceptionHandling(this IServiceCollection services)
+    {
+        services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
         return services;
     }
 }

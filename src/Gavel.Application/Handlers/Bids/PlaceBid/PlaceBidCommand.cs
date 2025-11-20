@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace Gavel.Application.Handlers.Bid.PlaceBid;
+namespace Gavel.Application.Handlers.Bids.PlaceBid;
 
 public class PlaceBidCommand : IRequest
 {

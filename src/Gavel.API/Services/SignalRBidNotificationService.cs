@@ -1,6 +1,6 @@
 using Gavel.API.Hubs;
-using Gavel.Application.Interfaces;
 using Gavel.Domain.Entities;
+using Gavel.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Gavel.API.Services;
@@ -12,5 +12,12 @@ public class SignalRBidNotificationService(IHubContext<BidHub> hubContext) : IBi
         await hubContext.Clients
             .Group(newBid.AuctionItemId.ToString())
             .SendAsync("NewBidPlaced", newBid);
+    }
+
+    public async Task NotifyAuctionClosedAsync(Guid auctionItemId)
+    {
+        await hubContext.Clients
+            .Group(auctionItemId.ToString())
+            .SendAsync("AuctionClosed", auctionItemId);
     }
 }

@@ -1,4 +1,5 @@
 using AutoMapper;
+using Gavel.Application.Handlers.Bids.PlaceBid;
 
 namespace Gavel.Application.Profiles;
 
@@ -6,6 +7,6 @@ public class BidMapper : Profile
 {
     public BidMapper()
     {
-        CreateMap<Handlers.Bid.PlaceBid.PlaceBidCommand, Domain.Entities.Bid>().ReverseMap();
+        CreateMap<PlaceBidCommand, Domain.Entities.Bid>().ReverseMap();
     }
 }
