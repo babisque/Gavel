@@ -1,5 +1,6 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Gavel.Domain.Enums;
 using Gavel.Domain.Interfaces.Repositories;
 using Gavel.Infrastructure;
 using MediatR;
@@ -17,6 +18,7 @@ public class GetAuctionItemsHandler(ApplicationDbContext context, IMapper mapper
         var totalCount = await query.CountAsync(cancellationToken);
         
         var auctionItems = await query
+            .Where(ai => ai.Status == AuctionStatus.Active)
             .OrderBy(ai => ai.StartTime)
             .Skip((request.Page - 1) * request.Size)
             .Take(request.Size)
