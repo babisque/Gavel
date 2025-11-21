@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using System.Text.Json.Serialization;
+using FluentValidation;
 using Gavel.API.Services;
 using Gavel.Application.Behaviors;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
@@ -27,7 +28,11 @@ public static class ServiceCollectionExtensions
             .AddApplicationServices(configuration)
             .AddQuartzConfiguration(configuration)
             .AddExceptionHandling()
-            .AddSignalR();
+            .AddSignalR()
+            .AddJsonProtocol(opts =>
+            {
+                opts.PayloadSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            });
     }
 
     private static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
@@ -51,7 +56,8 @@ public static class ServiceCollectionExtensions
                 {
                     policy.WithOrigins(origins)
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
         });
 
