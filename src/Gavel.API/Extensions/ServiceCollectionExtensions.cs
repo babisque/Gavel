@@ -9,6 +9,7 @@ using Gavel.Domain.Interfaces;
 using Gavel.Domain.Interfaces.Services;
 using Gavel.Infrastructure;
 using Gavel.Infrastructure.BackgroundServices;
+using Gavel.Infrastructure.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -99,6 +100,7 @@ public static class ServiceCollectionExtensions
         });
         services.AddScoped<IBidNotificationService, SignalRBidNotificationService>();
         services.AddHostedService<OutboxProcessor>();
+        services.AddScoped<ITokenService, TokenService>();
         
         return services;
     }

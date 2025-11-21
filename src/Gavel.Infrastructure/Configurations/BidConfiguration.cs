@@ -15,11 +15,13 @@ public class BidConfiguration : IEntityTypeConfiguration<Bid>
             .HasColumnType("decimal(18,2)");
         builder.Property(b => b.TimeStamp)
             .IsRequired();
-        builder.Property(b => b.BidderName)
-            .IsRequired();
         builder.HasOne(b => b.AuctionItem)
             .WithMany(ai => ai.Bids)
             .HasForeignKey(b => b.AuctionItemId)
+            .IsRequired();
+        builder.HasOne(b => b.Bidder)
+            .WithMany(au => au.Bids)
+            .HasForeignKey(b => b.BidderId)
             .IsRequired();
     }
 }
