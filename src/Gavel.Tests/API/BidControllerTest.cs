@@ -25,7 +25,7 @@ public class BidControllerTest
         {
             AuctionItemId = Guid.NewGuid(),
             Amount = 100.0m,
-            BidderName = "test name"
+            BidderId = Guid.NewGuid(),
         };
 
         _mediator
@@ -47,6 +47,6 @@ public class BidControllerTest
         _mediator.Verify(m => m.Send(It.Is<PlaceBidCommand>(cmd =>
             cmd.AuctionItemId == request.AuctionItemId &&
             cmd.Amount == request.Amount &&
-            cmd.BidderName == request.BidderName), It.IsAny<CancellationToken>()), Times.Once);
+            cmd.BidderId == request.BidderId), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

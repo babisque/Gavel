@@ -13,5 +13,13 @@ public class GetAuctionItemByIdResponse
     public DateTime EndTime { get; set; }
     public AuctionStatus Status { get; set; } = AuctionStatus.Pending;
     public byte[] RowVersion { get; set; }
-    public virtual ICollection<Domain.Entities.Bid> Bids { get; set; } = new HashSet<Domain.Entities.Bid>();
+    public ICollection<BidResponse> Bids { get; set; }
+}
+
+public class BidResponse 
+{
+    public Guid Id { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime TimeStamp { get; set; }
+    public Guid BidderId { get; set; } 
 }

@@ -23,8 +23,6 @@ public class PlaceBidHandler(
         auctionItem.PlaceBid(bid);
         await context.SaveChangesAsync(cancellationToken);
         
-        await context.Bids.AddAsync(bid, cancellationToken);
-        
         try
         {
             await context.SaveChangesAsync(cancellationToken);

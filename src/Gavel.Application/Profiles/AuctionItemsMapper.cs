@@ -11,5 +11,6 @@ public class AuctionItemsMapper : Profile
     {
         CreateMap<AuctionItem, GetAuctionItemsResponse>();
         CreateMap<AuctionItem, GetAuctionItemByIdResponse>();
+        CreateMap<Bid, BidResponse>();
     }
 }
