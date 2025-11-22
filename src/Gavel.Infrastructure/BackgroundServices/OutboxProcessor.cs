@@ -67,11 +67,24 @@ public class OutboxProcessor(
                 }
 
                 message.ProcessedAt = DateTime.UtcNow;
+                message.Error = null;
             }
             catch (Exception ex)
             {
+                message.RetryCount++;
                 message.Error = ex.Message;
-                logger.LogError(ex, "Error processing outbox messages");
+
+                if (message.RetryCount >= 3)
+                {
+                    message.ProcessedAt = DateTime.UtcNow;
+                    logger.LogCritical(ex,
+                        "Message {MessageId} failed after 3 retries and will be marked as processed.", message.Id);
+                }
+                else
+                {
+                    logger.LogWarning(ex, "Message {MessageId} processing failed. Retry count: {RetryCount}",
+                        message.Id, message.RetryCount);
+                }
             }
         }
         

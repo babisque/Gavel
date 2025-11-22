@@ -8,4 +8,5 @@ public class OutboxMessage
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ProcessedAt { get; set; }
     public string? Error { get; set; }
+    public int RetryCount { get; set; }
 }
