@@ -167,7 +167,7 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        var key = Encoding.ASCII.GetBytes(configuration["Jwt:Secret"] ??
+        var key = Encoding.ASCII.GetBytes(configuration["Jwt:Key"] ??
                                           throw new InvalidOperationException("JWT Key not found in configuration."));
         services.AddAuthentication(x =>
             {
