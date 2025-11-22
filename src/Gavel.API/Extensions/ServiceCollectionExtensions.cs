@@ -25,7 +25,6 @@ public static class ServiceCollectionExtensions
             .AddDatabase(configuration)
             .AddCustomCors(configuration)
             .AddSwagger()
-            .AddRepositories()
             .AddApplicationServices(configuration)
             .AddQuartzConfiguration(configuration)
             .AddExceptionHandling()
@@ -74,12 +73,6 @@ public static class ServiceCollectionExtensions
             c.SwaggerDoc("v1", new OpenApiInfo { Title = "Gavel API", Version = "v1" });
         });
 
-        return services;
-    }
-
-    private static IServiceCollection AddRepositories(this IServiceCollection services)
-    {
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
 

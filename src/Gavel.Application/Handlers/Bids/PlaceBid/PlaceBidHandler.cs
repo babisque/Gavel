@@ -2,22 +2,22 @@ using AutoMapper;
 using Gavel.Domain.Entities;
 using Gavel.Domain.Enums;
 using Gavel.Domain.Exceptions;
-using Gavel.Domain.Interfaces;
 using Gavel.Domain.Interfaces.Services;
+using Gavel.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gavel.Application.Handlers.Bids.PlaceBid;
 
 public class PlaceBidHandler(
-    IUnitOfWork unitOfWork,
+    ApplicationDbContext context,
     IBidNotificationService bidNotificationService, 
     IMapper mapper)
     : IRequestHandler<PlaceBidCommand>
 {
     public async Task Handle(PlaceBidCommand request, CancellationToken cancellationToken)
     {
-        var auctionItem = await unitOfWork.AuctionItems.GetByIdAsync(request.AuctionItemId);
+        var auctionItem = await context.AuctionItems.FindAsync([request.AuctionItemId], cancellationToken);
         
         if (auctionItem is null)
             throw new NotFoundException($"Auction item {request.AuctionItemId} not found");
@@ -35,12 +35,11 @@ public class PlaceBidHandler(
         bid.TimeStamp = DateTime.UtcNow;
         auctionItem.CurrentPrice = request.Amount;
         
-        await unitOfWork.Bids.CreateAsync(bid);
-        await unitOfWork.AuctionItems.UpdateAsync(auctionItem);
+        await context.Bids.AddAsync(bid, cancellationToken);
         
         try
         {
-            await unitOfWork.CompleteAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -48,5 +47,10 @@ public class PlaceBidHandler(
         }
             
         await bidNotificationService.NotifyNewBidAsync(bid);
+        
+        // TODO: Implement RabbitMQ to process bids
+        // The worker processes bids sequentially, ensuring no crashes,
+        // and notifies users via SignalR if they were outbid immediately,
+        // rather than throwing an API exception.
     }
 }

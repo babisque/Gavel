@@ -6,24 +6,24 @@ using Quartz;
 
 namespace Gavel.Infrastructure.Jobs;
 
-public class CloseAuctionJob(IUnitOfWork unitOfWork,
+public class CloseAuctionJob(ApplicationDbContext context,
     IBidNotificationService bidNotificationService,
     ILogger<CloseAuctionJob> logger) : IJob
 {
-    public async Task Execute(IJobExecutionContext context)
+    public async Task Execute(IJobExecutionContext executionContext)
     {
-        var rawId = context.JobDetail.JobDataMap.GetString("AuctionItemId");
+        var rawId = executionContext.JobDetail.JobDataMap.GetString("AuctionItemId");
         if (!Guid.TryParse(rawId, out var auctionItemId)) return;
 
-        var item = await unitOfWork.AuctionItems.GetByIdAsync(auctionItemId);
+        var item = await context.AuctionItems.FindAsync(auctionItemId);
         
         if (item is null || item.Status != AuctionStatus.Active) return;
         
         logger.LogInformation($"AuctionItem {auctionItemId} has been closed.");
 
         item.Status = AuctionStatus.Finished;
-        await unitOfWork.AuctionItems.UpdateAsync(item);
-        await unitOfWork.CompleteAsync();
+
+        await context.SaveChangesAsync();
         
         await bidNotificationService.NotifyAuctionClosedAsync(auctionItemId);
     }

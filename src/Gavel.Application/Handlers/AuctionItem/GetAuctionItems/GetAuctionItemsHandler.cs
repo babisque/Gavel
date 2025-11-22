@@ -1,7 +1,6 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Gavel.Domain.Enums;
-using Gavel.Domain.Interfaces.Repositories;
 using Gavel.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

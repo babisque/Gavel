@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Gavel.Domain.Constants;
 using Gavel.Domain.Entities;
 using Gavel.Infrastructure.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +47,7 @@ public class OutboxProcessor(
         {
             try
             {
-                if (message.Type == "ScheduleAuctionClose")
+                if (message.Type == OutboxMessageTypes.ScheduleAuctionClose)
                 {
                     var data = JsonSerializer.Deserialize<JsonElement>(message.Payload);
                     var auctionId = data.GetProperty("auctionId").GetGuid();
