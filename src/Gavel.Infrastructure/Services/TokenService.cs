@@ -3,14 +3,15 @@ using System.Security.Claims;
 using System.Text;
 using Gavel.Domain.Entities;
 using Gavel.Domain.Interfaces.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Gavel.Infrastructure.Services;
 
-public class TokenService(IConfiguration configuration) : ITokenService
+public class TokenService(IConfiguration configuration, UserManager<ApplicationUser> userManager) : ITokenService
 {
-    public string GenerateToken(ApplicationUser user)
+    public async Task<string> GenerateToken(ApplicationUser user)
     {
         var secretKey = configuration["Jwt:SecretKey"] ??
                         throw new InvalidOperationException("JWT Secret Key is not configured.");
@@ -22,8 +23,11 @@ public class TokenService(IConfiguration configuration) : ITokenService
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Role, "User")
         };
+        
+        var userRoles = await userManager.GetRolesAsync(user);
+        foreach (var userRole in userRoles)
+            claims.Add(new Claim(ClaimTypes.Role, userRole));
         
         var tokenDescriptor = new SecurityTokenDescriptor
         {

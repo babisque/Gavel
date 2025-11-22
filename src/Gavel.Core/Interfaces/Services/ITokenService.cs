@@ -4,5 +4,5 @@ namespace Gavel.Domain.Interfaces.Services;
 
 public interface ITokenService
 {
-    string GenerateToken(ApplicationUser user);
+    Task<string> GenerateToken(ApplicationUser user);
 }
