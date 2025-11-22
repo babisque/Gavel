@@ -19,21 +19,9 @@ public class PlaceBidHandler(
     {
         var auctionItem = await context.AuctionItems.FindAsync([request.AuctionItemId], cancellationToken);
         
-        if (auctionItem is null)
-            throw new NotFoundException($"Auction item {request.AuctionItemId} not found");
-        
-        if (auctionItem.Status != AuctionStatus.Active)
-            throw new ConflictException("Auction is not active.");
-    
-        if (auctionItem.EndTime < DateTime.UtcNow)
-            throw new ConflictException("Auction has ended.");
-        
-        if (request.Amount <= auctionItem.CurrentPrice)
-            throw new ConflictException("Bid must be higher than current price.");
-        
         var bid = mapper.Map<Bid>(request);
-        bid.TimeStamp = DateTime.UtcNow;
-        auctionItem.CurrentPrice = request.Amount;
+        auctionItem.PlaceBid(bid);
+        await context.SaveChangesAsync(cancellationToken);
         
         await context.Bids.AddAsync(bid, cancellationToken);
         

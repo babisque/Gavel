@@ -1,4 +1,5 @@
 ﻿using Gavel.Domain.Enums;
+using Gavel.Domain.Exceptions;
 
 namespace Gavel.Domain.Entities;
 
@@ -14,4 +15,19 @@ public class AuctionItem
     public AuctionStatus Status { get; set; } = AuctionStatus.Pending;
     public byte[] RowVersion { get; set; }
     public virtual ICollection<Bid> Bids { get; set; } = new HashSet<Bid>();
+
+    public void PlaceBid(Bid bid)
+    {
+        if (Status != AuctionStatus.Active)
+            throw new ConflictException("Auction is not active.");
+        
+        if (EndTime < DateTime.UtcNow)
+            throw new ConflictException("Auction has already ended.");
+        
+        if (bid.Amount <= CurrentPrice)
+            throw new ConflictException("Bid amount must be higher than the current price.");
+        
+        CurrentPrice = bid.Amount;
+        Bids.Add(bid);
+    }
 }

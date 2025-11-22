@@ -23,5 +23,6 @@ public class BidConfiguration : IEntityTypeConfiguration<Bid>
             .WithMany(au => au.Bids)
             .HasForeignKey(b => b.BidderId)
             .IsRequired();
+        builder.HasIndex(b => new { b.AuctionItemId, b.Amount });
     }
 }
