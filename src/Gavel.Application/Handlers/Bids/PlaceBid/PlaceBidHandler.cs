@@ -19,8 +19,11 @@ public class PlaceBidHandler(
     {
         var auctionItem = await context.AuctionItems.FindAsync([request.AuctionItemId], cancellationToken);
         
+        if (auctionItem is null)
+            throw new NotFoundException("The auction item was not found.");
+        
         var bid = mapper.Map<Bid>(request);
-        auctionItem?.PlaceBid(bid);
+        auctionItem.PlaceBid(bid);
         
         try
         {
