@@ -1,17 +1,20 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using Gavel.API.Services;
 using Gavel.Application.Behaviors;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using Gavel.Application.Handlers.Bids.PlaceBid;
 using Gavel.Application.Profiles;
-using Gavel.Domain.Interfaces;
+using Gavel.Domain.Entities;
 using Gavel.Domain.Interfaces.Services;
 using Gavel.Infrastructure;
 using Gavel.Infrastructure.BackgroundServices;
 using Gavel.Infrastructure.Services;
-using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Quartz;
 
@@ -23,6 +26,8 @@ public static class ServiceCollectionExtensions
     {
         services
             .AddDatabase(configuration)
+            .AddIdentity()
+            .AddJwtAuthentication(configuration)
             .AddCustomCors(configuration)
             .AddSwagger()
             .AddApplicationServices(configuration)
@@ -39,6 +44,24 @@ public static class ServiceCollectionExtensions
     {
         services.AddDbContext<ApplicationDbContext>(opts =>
             opts.UseSqlServer(configuration.GetConnectionString("SqlServerConnection")));
+
+        return services;
+    }
+
+    private static IServiceCollection AddIdentity(this IServiceCollection services)
+    {
+        services.AddIdentityCore<ApplicationUser>(opts =>
+            {
+                opts.Password.RequireDigit = false;
+                opts.Password.RequiredLength = 6;
+                opts.Password.RequireNonAlphanumeric = false;
+                opts.Password.RequireUppercase = false;
+                opts.Password.RequireLowercase = false;
+                opts.User.RequireUniqueEmail = true;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
 
         return services;
     }
@@ -139,6 +162,46 @@ public static class ServiceCollectionExtensions
     {
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+        return services;
+    }
+
+    private static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
+    {
+        var key = Encoding.ASCII.GetBytes(configuration["Jwt:Secret"] ??
+                                          throw new InvalidOperationException("JWT Key not found in configuration."));
+        services.AddAuthentication(x =>
+            {
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(x =>
+            {
+                x.RequireHttpsMetadata = false;
+                x.SaveToken = true;
+                x.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = configuration["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = configuration["Jwt:Audience"],
+                };
+
+                x.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = ctx =>
+                    {
+                        var accessToken = ctx.Request.Query["access_token"];
+                        var path = ctx.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                            ctx.Token = accessToken;
+
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+        
         return services;
     }
 }
