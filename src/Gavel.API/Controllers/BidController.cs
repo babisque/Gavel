@@ -15,7 +15,7 @@ public class BidController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> PlaceBid([FromBody] PlaceBidCommand request)
     {
         var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userClaim is null | !Guid.TryParse(userClaim.Value, out Guid userId)) return Unauthorized();
+        if (userClaim is null || !Guid.TryParse(userClaim.Value, out Guid userId)) return Unauthorized();
         
         request.BidderId = userId;
         

@@ -20,8 +20,7 @@ public class PlaceBidHandler(
         var auctionItem = await context.AuctionItems.FindAsync([request.AuctionItemId], cancellationToken);
         
         var bid = mapper.Map<Bid>(request);
-        auctionItem.PlaceBid(bid);
-        await context.SaveChangesAsync(cancellationToken);
+        auctionItem?.PlaceBid(bid);
         
         try
         {
