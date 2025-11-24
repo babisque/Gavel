@@ -1,9 +1,12 @@
-﻿using Gavel.Domain.Enums;
+﻿using System.Net.NetworkInformation;
+using Gavel.Domain.Common;
+using Gavel.Domain.Enums;
+using Gavel.Domain.Events;
 using Gavel.Domain.Exceptions;
 
 namespace Gavel.Domain.Entities;
 
-public class AuctionItem
+public class AuctionItem : BaseEntity
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -14,7 +17,8 @@ public class AuctionItem
     public DateTime EndTime { get; set; }
     public AuctionStatus Status { get; set; } = AuctionStatus.Pending;
     public byte[] RowVersion { get; set; }
-    public virtual ICollection<Bid> Bids { get; set; } = new HashSet<Bid>();
+    private readonly List<Bid> _bids = [];
+    public virtual IReadOnlyCollection<Bid> Bids => _bids.AsReadOnly();
 
     public void PlaceBid(Bid bid)
     {
@@ -28,6 +32,8 @@ public class AuctionItem
             throw new ConflictException("Bid amount must be higher than the current price.");
         
         CurrentPrice = bid.Amount;
-        Bids.Add(bid);
+        _bids.Add(bid);
+        
+        AddDomainEvent(new BidPlacedEvent(bid));
     }
 }

@@ -3,14 +3,17 @@ using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Entities;
 using Gavel.Infrastructure;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace Gavel.Tests.Application.Handlers;
 
 public class GetAuctionItemsHandlerTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly Mock<IPublisher> _mockPublisher;
     private readonly IMapper _mapper;
     private readonly GetAuctionItemsHandler _handler;
 
@@ -19,8 +22,10 @@ public class GetAuctionItemsHandlerTests : IDisposable
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) 
             .Options;
+        
+        _mockPublisher = new Mock<IPublisher>();
 
-        _context = new ApplicationDbContext(options);
+        _context = new ApplicationDbContext(options, _mockPublisher.Object);
 
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
         var mapperConfig = new MapperConfiguration(cfg =>
@@ -43,8 +48,7 @@ public class GetAuctionItemsHandlerTests : IDisposable
 
         var dbItems = new List<AuctionItem>
         {
-            new() { Id = Guid.NewGuid(), Name = "Item 1", StartTime = DateTime.UtcNow.AddDays(1), RowVersion = new byte[8] },
-            new() { Id = Guid.NewGuid(), Name = "Item 2", StartTime = DateTime.UtcNow.AddDays(2), RowVersion = new byte[8] }
+            new() { Id = Guid.NewGuid(), Name = "Item 2", StartTime = DateTime.UtcNow.AddDays(2), EndTime = DateTime.UtcNow.AddDays(3), RowVersion = new byte[8] }
         };
         
         await _context.AuctionItems.AddRangeAsync(dbItems, cancellationToken);

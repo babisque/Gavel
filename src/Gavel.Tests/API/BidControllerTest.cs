@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Gavel.API.Controllers;
 using Gavel.Application.Handlers.Bids.PlaceBid;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -21,11 +23,20 @@ public class BidControllerTest
     public async Task PlaceBid_WhenCalled_ReturnsOkResult()
     {
         // Arrange
+        var userId = Guid.NewGuid();
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _bidController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+        };
+        
         var request = new PlaceBidCommand
         {
             AuctionItemId = Guid.NewGuid(),
             Amount = 100.0m,
-            BidderId = Guid.NewGuid(),
         };
 
         _mediator
@@ -47,6 +58,6 @@ public class BidControllerTest
         _mediator.Verify(m => m.Send(It.Is<PlaceBidCommand>(cmd =>
             cmd.AuctionItemId == request.AuctionItemId &&
             cmd.Amount == request.Amount &&
-            cmd.BidderId == request.BidderId), It.IsAny<CancellationToken>()), Times.Once);
+            cmd.BidderId == userId), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
