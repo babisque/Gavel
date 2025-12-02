@@ -52,7 +52,12 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 problemDetails.Extensions.Add("errors", errors);
                 break;
             
-            
+            case UnauthorizedAccessException unauthorized:
+                problemDetails.Status = StatusCodes.Status401Unauthorized;
+                problemDetails.Title = "Unauthorized";
+                problemDetails.Detail = unauthorized.Message;
+                break;
+                
             default:
                 problemDetails.Status = StatusCodes.Status500InternalServerError;
                 problemDetails.Title = "Internal Server Error";

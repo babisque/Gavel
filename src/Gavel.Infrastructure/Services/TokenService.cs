@@ -13,7 +13,7 @@ public class TokenService(IConfiguration configuration, UserManager<ApplicationU
 {
     public async Task<string> GenerateToken(ApplicationUser user)
     {
-        var secretKey = configuration["Jwt:SecretKey"] ??
+        var secretKey = configuration["Jwt:Key"] ??
                         throw new InvalidOperationException("JWT Secret Key is not configured.");
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
