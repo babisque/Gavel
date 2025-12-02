@@ -4,12 +4,14 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Gavel.Infrastructure;
 
 public class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
-    IPublisher publisher) : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
+    IPublisher publisher,
+    ILogger<ApplicationDbContext> logger) : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<AuctionItem> AuctionItems { get; set; }
     public DbSet<Bid> Bids { get; set; }
@@ -31,7 +33,16 @@ public class ApplicationDbContext(
         entitiesWithEvents.ForEach(e => e.ClearDomainEvents());
 
         foreach (var domainEvent in domainEvents)
-            await publisher.Publish(domainEvent, cancellationToken);
+        {
+            try
+            {
+                await publisher.Publish(domainEvent, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occured during domain events. {EventName}", domainEvent.GetType().Name);
+            }
+        }
 
         return result;
     }

@@ -27,9 +27,14 @@ public class AuctionItem : BaseEntity
         
         if (EndTime < DateTime.UtcNow)
             throw new ConflictException("Auction has already ended.");
+
+        var minBidAmount = CurrentPrice * 1.05m;
+        if (bid.Amount < minBidAmount)
+            throw new ConflictException($"Bid amount must be at least {minBidAmount:C} (5% higher than current price).");
         
-        if (bid.Amount <= CurrentPrice)
-            throw new ConflictException("Bid amount must be higher than the current price.");
+        var lastBid = _bids.MaxBy(b => b.Amount);
+        if (lastBid is not null && lastBid.BidderId == bid.BidderId)
+            throw new ConflictException("You are already the highest bidder.");
         
         CurrentPrice = bid.Amount;
         _bids.Add(bid);

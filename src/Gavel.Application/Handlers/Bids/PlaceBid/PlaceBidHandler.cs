@@ -33,8 +33,6 @@ public class PlaceBidHandler(
         {
             throw new ConflictException("The price has changed since you loaded the page. Please refresh and try again.");
         }
-            
-        await bidNotificationService.NotifyNewBidAsync(bid);
         
         // TODO: Implement RabbitMQ to process bids
         // The worker processes bids sequentially, ensuring no crashes,
