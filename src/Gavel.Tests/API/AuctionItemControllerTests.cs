@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Gavel.API.Controllers;
+using Gavel.Application.Handlers.AuctionItem.CreateAuctionItem;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItemById;
 using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using MediatR;
@@ -70,5 +71,34 @@ public class AuctionItemControllerTests
         Assert.Equal(expectedItem.Id, returnItem.Id);
         
         _mockMediator.Verify(m => m.Send(It.Is<GetAuctionItemByIdQuery>(q => q.Id == itemId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAuctionItem_WhenCalled_ReturnsCreatedAtActionResult()
+    {
+        // Arrange
+        var newItemId = Guid.NewGuid();
+        var request = new CreateAuctionItemCommand
+        {
+            Name = "New Auction",
+            Description = "Test Description",
+            InitialPrice = 100m,
+            EndTime = DateTime.UtcNow.AddDays(7)
+        };
+
+        _mockMediator
+            .Setup(m => m.Send(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(newItemId);
+        
+        // Act
+        var result = await _controller.CreateAuctionItem(request);
+        
+        // Assert
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+        Assert.Equal(nameof(_controller.GetAuctionItemById), createdResult.ActionName);
+        Assert.NotNull(createdResult.RouteValues);
+        Assert.Equal(newItemId, createdResult.RouteValues["id"]);
+        
+        _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
     }
 }
