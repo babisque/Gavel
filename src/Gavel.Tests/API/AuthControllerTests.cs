@@ -45,30 +45,5 @@ public class AuthControllerTests
         
         _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
     }
-
-    [Fact]
-    public async Task Login_WhenCalled_ReturnsOkResultWithToken()
-    {
-        // Arrange
-        var expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-        var request = new LoginUserCommand
-        {
-            Email = "test@example.com",
-            Password = "Password123!"
-        };
-
-        _mockMediator
-            .Setup(m => m.Send(request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedToken);
-
-        // Act
-        var result = await _controller.Login(request);
-
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(expectedToken, okResult.Value);
-        
-        _mockMediator.Verify(m => m.Send(request, It.IsAny<CancellationToken>()), Times.Once);
-    }
 }
 

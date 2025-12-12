@@ -40,7 +40,7 @@ public class LoginUserHandlerTests
             UserName = command.Email
         };
 
-        var expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+        const string expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
 
         _mockUserManager
             .Setup(x => x.FindByEmailAsync(command.Email))
@@ -58,7 +58,7 @@ public class LoginUserHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        Assert.Equal(expectedToken, result);
+        Assert.Equal(expectedToken, result.AccessToken);
 
         _mockUserManager.Verify(x => x.FindByEmailAsync(command.Email), Times.Once);
         _mockUserManager.Verify(x => x.CheckPasswordAsync(user, command.Password), Times.Once);
