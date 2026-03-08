@@ -2,6 +2,7 @@ using Gavel.Application.Handlers.Bids;
 using Gavel.Domain.Entities;
 using Gavel.Domain.Events;
 using Gavel.Domain.Interfaces.Services;
+using Gavel.Domain.ValueObjects;
 using Moq;
 
 namespace Gavel.Tests.Application.Handlers;
@@ -21,14 +22,7 @@ public class BidPlacedEventHandlerTests
     public async Task Handle_WhenEventReceived_CallsNotificationService()
     {
         // Arrange
-        var bid = new Bid
-        {
-            Id = Guid.NewGuid(),
-            AuctionItemId = Guid.NewGuid(),
-            BidderId = Guid.NewGuid(),
-            Amount = 150m,
-            TimeStamp = DateTime.UtcNow
-        };
+        var bid = new Bid(new Money(150m), Guid.NewGuid(), Guid.NewGuid());
 
         var notification = new BidPlacedEvent(bid);
 
@@ -43,7 +37,7 @@ public class BidPlacedEventHandlerTests
         _mockBidNotificationService.Verify(
             x => x.NotifyNewBidAsync(It.Is<Bid>(b => 
                 b.Id == bid.Id && 
-                b.Amount == bid.Amount && 
+                b.Amount.Amount == bid.Amount.Amount && 
                 b.BidderId == bid.BidderId)),
             Times.Once
         );

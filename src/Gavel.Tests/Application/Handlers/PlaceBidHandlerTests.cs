@@ -1,54 +1,41 @@
-using AutoMapper;
 using Gavel.Application.Handlers.Bids.PlaceBid;
 using Gavel.Domain.Entities;
-using Gavel.Domain.Enums;
 using Gavel.Domain.Exceptions;
-using Gavel.Domain.Interfaces.Services;
-using Gavel.Infrastructure;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Repositories;
+using Gavel.Domain.ValueObjects;
 using Moq;
 
 namespace Gavel.Tests.Application.Handlers;
 
-public class PlaceBidHandlerTests : IDisposable
+public class PlaceBidHandlerTests
 {
-    private readonly ApplicationDbContext _context;
-    private readonly Mock<IBidNotificationService> _mockBidNotificationService;
-    private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<IAuctionItemRepository> _mockAuctionItemRepository;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly PlaceBidHandler _handler;
 
     public PlaceBidHandlerTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
-            .EnableSensitiveDataLogging()
-            .Options;
-
-        var mockPublisher = new Mock<IPublisher>();
-        var mockLogger = new Mock<ILogger<ApplicationDbContext>>();
-        
-        _context = new ApplicationDbContext(options, mockPublisher.Object, mockLogger.Object);
-
-        _mockBidNotificationService = new Mock<IBidNotificationService>();
-        _mockMapper = new Mock<IMapper>();
+        _mockAuctionItemRepository = new Mock<IAuctionItemRepository>();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
 
         _handler = new PlaceBidHandler(
-            _context,
-            _mockBidNotificationService.Object,
-            _mockMapper.Object);
+            _mockAuctionItemRepository.Object,
+            _mockUnitOfWork.Object);
     }
 
     [Fact]
     public async Task Handler_ShouldThrowNotFoundException_WhenAuctionItemDoesNotExist()
     {
         // Arrange
-        var command = new PlaceBidCommand { AuctionItemId = Guid.NewGuid(), BidderId = Guid.NewGuid(), Amount = 100 };
+        var command = new PlaceBidCommand { AuctionItemId = Guid.NewGuid(), BidderId = Guid.NewGuid(), Amount = 100m };
+        _mockAuctionItemRepository
+            .Setup(r => r.GetByIdAsync(command.AuctionItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AuctionItem?)null);
         
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() => _handler.Handle(command, CancellationToken.None));
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -57,27 +44,17 @@ public class PlaceBidHandlerTests : IDisposable
         // Arrange
         var auctionItemId = Guid.NewGuid();
         var bidderId = Guid.NewGuid();
-        var command = new PlaceBidCommand { AuctionItemId = auctionItemId, BidderId = bidderId, Amount = 150 };
+        var command = new PlaceBidCommand { AuctionItemId = auctionItemId, BidderId = bidderId, Amount = 150m };
         
-        var auctionItem = new AuctionItem 
-        { 
-            Id = auctionItemId,
-            Name = "Test Item",
-            CurrentPrice = 100,
-            Status = AuctionStatus.Finished,
-            StartTime = DateTime.UtcNow.AddDays(-2),
-            EndTime = DateTime.UtcNow.AddDays(-1),
-            RowVersion = new byte[8]
-        };
-
-        _context.AuctionItems.Add(auctionItem);
-        await _context.SaveChangesAsync();
-
-        var bid = new Bid { Id = Guid.NewGuid(), AuctionItemId = auctionItemId, BidderId = bidderId, Amount = command.Amount };
-        _mockMapper.Setup(m => m.Map<Bid>(command)).Returns(bid);
+        // Past end-time guarantees a conflict when trying to place a bid.
+        var auctionItem = new AuctionItem("Test Item", "Test Description", new Money(100m), DateTime.UtcNow.AddMinutes(-1));
+        _mockAuctionItemRepository
+            .Setup(r => r.GetByIdAsync(auctionItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(auctionItem);
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(() => _handler.Handle(command, CancellationToken.None));
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -86,32 +63,15 @@ public class PlaceBidHandlerTests : IDisposable
         // Arrange
         var auctionItemId = Guid.NewGuid();
         var bidderId = Guid.NewGuid();
-        var command = new PlaceBidCommand { AuctionItemId = auctionItemId, BidderId = bidderId, Amount = 104 }; // Less than 5% above 100
+        var command = new PlaceBidCommand { AuctionItemId = auctionItemId, BidderId = bidderId, Amount = 104m }; // Less than 5% above 100
         
-        var auctionItem = new AuctionItem 
-        { 
-            Id = auctionItemId,
-            Name = "Test Item",
-            CurrentPrice = 100, 
-            Status = AuctionStatus.Active,
-            StartTime = DateTime.UtcNow.AddDays(-1),
-            EndTime = DateTime.UtcNow.AddDays(1),
-            RowVersion = new byte[8]
-        };
-
-        _context.AuctionItems.Add(auctionItem);
-        await _context.SaveChangesAsync();
-
-        var bid = new Bid { Id = Guid.NewGuid(), AuctionItemId = auctionItemId, BidderId = bidderId, Amount = command.Amount };
-        _mockMapper.Setup(m => m.Map<Bid>(command)).Returns(bid);
+        var auctionItem = new AuctionItem("Test Item", "Test Description", new Money(100m), DateTime.UtcNow.AddDays(1));
+        _mockAuctionItemRepository
+            .Setup(r => r.GetByIdAsync(auctionItemId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(auctionItem);
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(() => _handler.Handle(command, CancellationToken.None));
-    }
-
-    public void Dispose()
-    {
-        _context.Database.EnsureDeleted();
-        _context.Dispose();
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

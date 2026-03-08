@@ -1,5 +1,4 @@
 using Gavel.Domain.Enums;
-using Gavel.Domain.Interfaces;
 using Gavel.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -21,7 +20,7 @@ public class CloseAuctionJob(ApplicationDbContext context,
         
         logger.LogInformation($"AuctionItem {auctionItemId} has been closed.");
 
-        item.Status = AuctionStatus.Finished;
+        item.CloseAuction();
 
         await context.SaveChangesAsync();
         

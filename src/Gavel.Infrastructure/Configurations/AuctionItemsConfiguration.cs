@@ -13,12 +13,31 @@ public class AuctionItemsConfiguration : IEntityTypeConfiguration<AuctionItem>
         builder.Property(ai => ai.Name)
             .IsRequired()
             .HasMaxLength(200);
-        builder.Property(ai => ai.InitialPrice)
-            .IsRequired()
-            .HasColumnType("decimal(18,2)");
-        builder.Property(ai => ai.CurrentPrice)
-            .IsRequired()
-            .HasColumnType("decimal(18,2)");
+        builder.ComplexProperty(ai => ai.InitialPrice, priceBuilder =>
+        {
+            priceBuilder.Property(p => p.Amount)
+                .HasColumnName("InitialPrice")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            priceBuilder.Property(p => p.Currency)
+                .HasColumnName("InitialPriceCurrency")
+                .HasMaxLength(3)
+                .IsRequired();
+        });
+        
+        builder.ComplexProperty(ai => ai.CurrentPrice, priceBuilder =>
+        {
+            priceBuilder.Property(p => p.Amount)
+                .HasColumnName("CurrentPrice")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+            priceBuilder.Property(p => p.Currency)
+                .HasColumnName("CurrentPriceCurrency")
+                .HasMaxLength(3)
+                .IsRequired();
+        });
+
         builder.Property(ai => ai.StartTime)
             .IsRequired();
         builder.Property(ai => ai.EndTime)

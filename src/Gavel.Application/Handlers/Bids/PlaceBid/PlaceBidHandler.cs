@@ -1,39 +1,29 @@
-using AutoMapper;
 using Gavel.Domain.Entities;
-using Gavel.Domain.Enums;
 using Gavel.Domain.Exceptions;
-using Gavel.Domain.Interfaces.Services;
-using Gavel.Infrastructure;
+using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Repositories;
+using Gavel.Domain.ValueObjects;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Gavel.Application.Handlers.Bids.PlaceBid;
 
 public class PlaceBidHandler(
-    ApplicationDbContext context,
-    IBidNotificationService bidNotificationService, 
-    IMapper mapper)
+    IAuctionItemRepository auctionItemRepository,
+    IUnitOfWork unitOfWork)
     : IRequestHandler<PlaceBidCommand>
 {
     public async Task Handle(PlaceBidCommand request, CancellationToken cancellationToken)
     {
-        var auctionItem = await context.AuctionItems.FindAsync([request.AuctionItemId], cancellationToken);
-        
+        var auctionItem = await auctionItemRepository.GetByIdAsync(request.AuctionItemId, cancellationToken);
+
         if (auctionItem is null)
-            throw new NotFoundException("The auction item was not found.");
-        
-        var bid = mapper.Map<Bid>(request);
+            throw new NotFoundException($"Auction item with ID {request.AuctionItemId} not found.");
+
+        var bid = new Bid(new Money(request.Amount), request.AuctionItemId, request.BidderId);
         auctionItem.PlaceBid(bid);
-        
-        try
-        {
-            await context.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new ConflictException("The price has changed since you loaded the page. Please refresh and try again.");
-        }
-        
+
+        await unitOfWork.SaveChangesAsync();
+
         // TODO: Implement RabbitMQ to process bids
         // The worker processes bids sequentially, ensuring no crashes,
         // and notifies users via SignalR if they were outbid immediately,

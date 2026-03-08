@@ -7,9 +7,12 @@ using Gavel.Application.Handlers.AuctionItem.GetAuctionItems;
 using Gavel.Application.Handlers.Bids.PlaceBid;
 using Gavel.Application.Profiles;
 using Gavel.Domain.Entities;
+using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Repositories;
 using Gavel.Domain.Interfaces.Services;
 using Gavel.Infrastructure;
 using Gavel.Infrastructure.BackgroundServices;
+using Gavel.Infrastructure.Repositories;
 using Gavel.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -115,6 +118,8 @@ public static class ServiceCollectionExtensions
             cfg.LicenseKey = configuration.GetSection("LuckyPenny:LicenseKey").Value;
         });
         services.AddScoped<IBidNotificationService, SignalRBidNotificationService>();
+        services.AddScoped<IAuctionItemRepository, AuctionItemRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddHostedService<OutboxProcessor>();
         services.AddScoped<ITokenService, TokenService>();
         

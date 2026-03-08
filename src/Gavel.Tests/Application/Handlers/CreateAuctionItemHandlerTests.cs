@@ -1,46 +1,23 @@
-using AutoMapper;
 using Gavel.Application.Handlers.AuctionItem.CreateAuctionItem;
-using Gavel.Application.Profiles;
-using Gavel.Domain.Entities;
 using Gavel.Domain.Enums;
-using Gavel.Infrastructure;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Gavel.Domain.Interfaces;
+using Gavel.Domain.Interfaces.Repositories;
 using Moq;
-using Quartz;
 
 namespace Gavel.Tests.Application.Handlers;
 
-public class CreateAuctionItemHandlerTests : IDisposable
+public class CreateAuctionItemHandlerTests
 {
-    private readonly ApplicationDbContext _context;
-    private readonly Mock<ISchedulerFactory> _mockSchedulerFactory;
-    private readonly IMapper _mapper;
+    private readonly Mock<IAuctionItemRepository> _mockAuctionItemRepository;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly CreateAuctionItemHandler _handler;
 
     public CreateAuctionItemHandlerTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        _mockAuctionItemRepository = new Mock<IAuctionItemRepository>();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
 
-        var mockPublisher = new Mock<IPublisher>();
-        var mockLogger = new Mock<ILogger<ApplicationDbContext>>();
-        _context = new ApplicationDbContext(options, mockPublisher.Object, mockLogger.Object);
-
-        _mockSchedulerFactory = new Mock<ISchedulerFactory>();
-
-        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        var mapperConfig = new MapperConfiguration(cfg =>
-        {
-            cfg.LicenseKey = string.Empty;
-            cfg.AddProfile<AuctionItemsMapper>();
-            cfg.AddProfile<BidMapper>();
-        }, loggerFactory);
-        _mapper = mapperConfig.CreateMapper();
-
-        _handler = new CreateAuctionItemHandler(_context, _mockSchedulerFactory.Object, _mapper);
+        _handler = new CreateAuctionItemHandler(_mockAuctionItemRepository.Object, _mockUnitOfWork.Object);
     }
 
     [Fact]
@@ -54,6 +31,12 @@ public class CreateAuctionItemHandlerTests : IDisposable
             InitialPrice = 100m,
             EndTime = DateTime.UtcNow.AddDays(7)
         };
+        Gavel.Domain.Entities.AuctionItem? createdItem = null;
+
+        _mockAuctionItemRepository
+            .Setup(r => r.AddAsync(It.IsAny<Gavel.Domain.Entities.AuctionItem>(), It.IsAny<CancellationToken>()))
+            .Callback<Gavel.Domain.Entities.AuctionItem, CancellationToken>((item, _) => createdItem = item)
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -61,18 +44,18 @@ public class CreateAuctionItemHandlerTests : IDisposable
         // Assert
         Assert.NotEqual(Guid.Empty, result);
 
-        var auctionItem = await _context.AuctionItems.FindAsync(result);
-        Assert.NotNull(auctionItem);
-        Assert.Equal(command.Name, auctionItem.Name);
-        Assert.Equal(command.Description, auctionItem.Description);
-        Assert.Equal(command.InitialPrice, auctionItem.InitialPrice);
-        Assert.Equal(command.InitialPrice, auctionItem.CurrentPrice);
-        Assert.Equal(AuctionStatus.Active, auctionItem.Status);
-        Assert.True(auctionItem.StartTime <= DateTime.UtcNow);
+        Assert.NotNull(createdItem);
+        Assert.Equal(result, createdItem!.Id);
+        Assert.Equal(command.Name, createdItem.Name);
+        Assert.Equal(command.Description, createdItem.Description);
+        Assert.Equal(command.InitialPrice, createdItem.InitialPrice.Amount);
+        Assert.Equal(command.InitialPrice, createdItem.CurrentPrice.Amount);
+        Assert.Equal(AuctionStatus.Active, createdItem.Status);
 
-        var outboxMessage = await _context.OutboxMessages.FirstOrDefaultAsync();
-        Assert.NotNull(outboxMessage);
-        Assert.Contains(result.ToString(), outboxMessage.Payload);
+        _mockAuctionItemRepository.Verify(
+            r => r.AddAsync(It.IsAny<Gavel.Domain.Entities.AuctionItem>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -86,25 +69,24 @@ public class CreateAuctionItemHandlerTests : IDisposable
             InitialPrice = 100m,
             EndTime = DateTime.UtcNow.AddDays(7)
         };
+        Gavel.Domain.Entities.AuctionItem? createdItem = null;
+
+        _mockAuctionItemRepository
+            .Setup(r => r.AddAsync(It.IsAny<Gavel.Domain.Entities.AuctionItem>(), It.IsAny<CancellationToken>()))
+            .Callback<Gavel.Domain.Entities.AuctionItem, CancellationToken>((item, _) => createdItem = item)
+            .Returns(Task.CompletedTask);
 
         var beforeTime = DateTime.UtcNow;
 
         // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+        await _handler.Handle(command, CancellationToken.None);
 
         var afterTime = DateTime.UtcNow;
 
         // Assert
-        var auctionItem = await _context.AuctionItems.FindAsync(result);
-        Assert.NotNull(auctionItem);
-        Assert.True(auctionItem.StartTime >= beforeTime);
-        Assert.True(auctionItem.StartTime <= afterTime);
-    }
-
-    public void Dispose()
-    {
-        _context.Database.EnsureDeleted();
-        _context.Dispose();
+        Assert.NotNull(createdItem);
+        Assert.True(createdItem!.StartTime >= beforeTime);
+        Assert.True(createdItem.StartTime <= afterTime);
     }
 }
 

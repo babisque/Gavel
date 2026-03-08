@@ -10,9 +10,19 @@ public class BidConfiguration : IEntityTypeConfiguration<Bid>
     {
         builder.ToTable("Bids");
         builder.HasKey(b => b.Id);
-        builder.Property(b => b.Amount)
-            .IsRequired()
-            .HasColumnType("decimal(18,2)");
+        
+        builder.ComplexProperty(b => b.Amount, amountBuilder =>
+        {
+            amountBuilder.Property(a => a.Amount)
+                .HasColumnName("Amount")
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+            amountBuilder.Property(a => a.Currency)
+                .HasColumnName("Currency")
+                .HasMaxLength(3)
+                .IsRequired();
+        });
+
         builder.Property(b => b.TimeStamp)
             .IsRequired();
         builder.HasOne(b => b.AuctionItem)
