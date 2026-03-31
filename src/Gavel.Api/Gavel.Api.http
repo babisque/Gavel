@@ -1,0 +1,11 @@
+@Gavel.Api_HostAddress = http://localhost:5075
+
+GET {{Gavel.Api_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{Gavel.Api_HostAddress}}/todos/1
+Accept: application/json
+
+###

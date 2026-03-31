@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Gavel.Api/Gavel.Api.csproj" />
+    <Project Path="src/Gavel.AppHost/Gavel.AppHost.csproj" />
+    <Project Path="src/Gavel.Core/Gavel.Core.csproj" />
+    <Project Path="src/Gavel.ServiceDefaults/Gavel.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Gavel.Tests/Gavel.Tests.csproj" />
+  </Folder>
+</Solution>
