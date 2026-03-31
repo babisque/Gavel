@@ -1,23 +1,23 @@
 using Aspire.Hosting;
 
-IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
+var builder = DistributedApplication.CreateBuilder(args);
 
 // PostgreSQL Resource ("gaveldb")
-IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
+var postgres = builder.AddPostgres("postgres")
     .WithImage("postgres", "17")
     .WithDataVolume();
 
-IResourceBuilder<PostgresDatabaseResource> db = postgres.AddDatabase("gaveldb");
+var gavelDb = postgres.AddDatabase("gaveldb");
 
-// Keycloak Resource
-IResourceBuilder<KeycloakResource> keycloak = builder.AddKeycloak("keycloak")
+// Keycloak Resource for OIDC
+var keycloak = builder.AddKeycloak("keycloak")
     .WithDataVolume();
 
 // Gavel.Api Orchestration
 builder.AddProject<Projects.Gavel_Api>("gavel-api")
-    .WithReference(db)
+    .WithReference(gavelDb)
     .WithReference(keycloak)
-    .WaitFor(db)
+    .WaitFor(gavelDb)
     .WaitFor(keycloak)
     .WithHttpHealthCheck("/health");
 
