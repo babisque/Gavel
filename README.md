@@ -46,7 +46,7 @@ dotnet run --project src/Gavel.AppHost
 - [x] Set up .NET Aspire AppHost and ServiceDefaults.
 - [x] Configure PostgreSQL with EF Core 10 and Row Versioning.
 - [x] Integrate Keycloak for OIDC Authentication.
-- [ ] Implement the base `Lot` and `Auction` domain entities.
+- [x] Implement the base `Lot` and `Auction` domain entities.
 
 ### Phase 2: User Governance (KYC)
 - [ ] Implement Bidder Registration flow.
