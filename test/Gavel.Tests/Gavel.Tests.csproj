@@ -8,12 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.5" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="TUnit" Version="1.*" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Gavel.Core\Gavel.Core.csproj" />
+    <ProjectReference Include="..\..\src\Gavel.Api\Gavel.Api.csproj" />
   </ItemGroup>
 
 </Project>

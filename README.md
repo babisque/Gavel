@@ -42,16 +42,16 @@ dotnet run --project src/Gavel.AppHost
 
 ## 🗺️ Roadmap
 
-### Phase 1: Foundation & Orchestration (Current)
+### Phase 1: Foundation & Orchestration
 - [x] Set up .NET Aspire AppHost and ServiceDefaults.
 - [x] Configure PostgreSQL with EF Core 10 and Row Versioning.
 - [x] Integrate Keycloak for OIDC Authentication.
 - [x] Implement the base `Lot` and `Auction` domain entities.
 
 ### Phase 2: User Governance (KYC)
-- [ ] Implement Bidder Registration flow.
-- [ ] Integrate CPF/CNPJ validation (Brazilian Federal Revenue rules).
-- [ ] Document upload and administrative approval workflow.
+- [x] Implement Bidder Registration flow.
+- [x] Integrate CPF/CNPJ validation (Brazilian Federal Revenue rules).
+- [x] Document upload and administrative approval workflow.
 
 ### Phase 3: Cataloging & Asset Management
 - [ ] CRUD for Lots (Draft -> Scheduled).
