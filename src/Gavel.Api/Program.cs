@@ -1,40 +1,85 @@
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using Gavel.Api.Infrastructure.Data;
+using Gavel.Api.Features.Auctions.Services;
+using Gavel.Api.Features.Auctions;
+using Gavel.Core.Domain.Lots;
+using Gavel.Core.Domain.Registration;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+
+// Add ServiceDefaults for Aspire Integration
+builder.AddServiceDefaults();
+
+// Add Database
+builder.Services.AddDbContext<GavelDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("gaveldb")));
+
+// Add Services
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ILotManagementService, LotManagementService>();
+
+// Global Exception Mapping to RFC 7807 Problem Details
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        var exception = context.HttpContext.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+        if (exception is KeyNotFoundException)
+        {
+            context.ProblemDetails.Status = StatusCodes.Status404NotFound;
+            context.ProblemDetails.Title = "Resource Not Found";
+            context.ProblemDetails.Detail = exception.Message;
+        }
+        else if (exception is InvalidOperationException or InvalidStateTransitionException)
+        {
+            context.ProblemDetails.Status = StatusCodes.Status400BadRequest;
+            context.ProblemDetails.Title = "Business Rule Violation";
+            context.ProblemDetails.Detail = exception.Message;
+        }
+        else if (exception is GuaranteeMissingException)
+        {
+            context.ProblemDetails.Status = StatusCodes.Status403Forbidden;
+            context.ProblemDetails.Title = "Qualification Required";
+            context.ProblemDetails.Detail = exception.Message;
+            context.ProblemDetails.Extensions["errorCode"] = "MANDATORY_GUARANTEE_MISSING";
+        }
+    };
+});
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
-
 var app = builder.Build();
 
+app.UseExceptionHandler(); // Enable global exception handler
+app.UseStatusCodePages();   // Enable Problem Details for standard status codes
 
-Todo[] sampleTodos =
-[
-    new(1, "Walk the dog"),
-    new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-    new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-    new(4, "Clean the bathroom"),
-    new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-];
+app.MapDefaultEndpoints();
 
-var todosApi = app.MapGroup("/todos");
-todosApi.MapGet("/", () => sampleTodos);
-
-todosApi.MapGet("/{id}", Results<Ok<Todo>, NotFound> (int id) =>
-    sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-        ? TypedResults.Ok(todo)
-        : TypedResults.NotFound());
+// Feature Endpoints
+app.MapLotEndpoints();
 
 app.Run();
 
-public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-[JsonSerializable(typeof(Todo[]))]
+// Native AOT Serialization Context
+[JsonSerializable(typeof(CreateLotRequest))]
+[JsonSerializable(typeof(AddPhotoRequest))]
+[JsonSerializable(typeof(AttachNoticeRequest))]
+[JsonSerializable(typeof(ScheduleLotRequest))]
+[JsonSerializable(typeof(Lot))]
+[JsonSerializable(typeof(LotState))]
+[JsonSerializable(typeof(Commission))]
+[JsonSerializable(typeof(Photo))]
+[JsonSerializable(typeof(PublicNotice))]
+[JsonSerializable(typeof(Guid))]
+[JsonSerializable(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails))]
+[JsonSerializable(typeof(HttpValidationProblemDetails))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
-
 }

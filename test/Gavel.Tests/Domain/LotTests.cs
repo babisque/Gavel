@@ -41,10 +41,10 @@ public class LotTests
         // Act
         lot.AddPhoto("p2.jpg", 10);
         lot.AddPhoto("p1.jpg", 1);
-        lot.AddPhoto("p3.jpg"); // default to 3rd because current count is 2+1
+        lot.AddPhoto("p3.jpg");
 
         // Assert
-        var photos = lot.Photos.ToList();
+        var photos = lot.Photos.OrderBy(p => p.Order).ToList();
         await That(photos[0].Url).IsEqualTo("p1.jpg");
         await That(photos[0].Order).IsEqualTo(1);
         await That(photos[1].Url).IsEqualTo("p2.jpg");

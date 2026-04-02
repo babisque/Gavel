@@ -30,25 +30,36 @@ public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
             .HasMaxLength(20)
             .IsRequired();
 
-        // EF Core 10 Complex Property for the mandatory Commission VO
-        builder.ComplexProperty(e => e.Commission, cb =>
+        builder.OwnsOne(e => e.Commission, cb =>
         {
             cb.Property(c => c.Rate).HasColumnName("CommissionRate").HasPrecision(5, 4);
         });
 
-        // Native AOT compatible JSON column for Photos
+        // Photos collection as Owned Entities
         builder.OwnsMany(e => e.Photos, pb =>
         {
-            pb.ToJson();
-            pb.Property(p => p.Url).HasMaxLength(2048);
+            pb.HasKey(p => p.Id);
+            pb.Property(p => p.Url).HasMaxLength(2048).IsRequired();
+            pb.Property(p => p.Order).IsRequired();
+            
+            if (builder.Metadata.Model?.ToString().Contains("Npgsql") == true)
+            {
+                // pb.ToJson(); 
+            }
         });
 
-        // Native AOT compatible JSON column for Public Notice History (Auditability)
+        // Public Notice History
         builder.OwnsMany(e => e.NoticeHistory, nb =>
         {
-            nb.ToJson();
-            nb.Property(n => n.Url).HasMaxLength(2048);
-            nb.Property(n => n.Version).HasMaxLength(50);
+            nb.HasKey(n => n.Id);
+            nb.Property(n => n.Url).HasMaxLength(2048).IsRequired();
+            nb.Property(n => n.Version).HasMaxLength(50).IsRequired();
+            nb.Property(n => n.AttachedAt).IsRequired();
+
+            if (builder.Metadata.Model?.ToString().Contains("Npgsql") == true)
+            {
+                // nb.ToJson();
+            }
         });
     }
 }

@@ -3,44 +3,55 @@ using System.Collections.ObjectModel;
 
 namespace Gavel.Core.Domain.Lots;
 
-/// <summary>
-/// Represents the mandatory 5% Auctioneer Commission as per Decree No. 21,981/1932.
-/// </summary>
 public record Commission
 {
-    public decimal Rate { get; } = 0.05m;
+    public decimal Rate { get; init; } = 0.05m;
     public decimal Calculate(decimal amount) => amount * Rate;
 }
 
-/// <summary>
-/// Value Object for price transparency, detailing the composition of the total amount payable.
-/// </summary>
 public record PriceBreakdown(
     decimal BidAmount, 
     decimal CommissionAmount, 
     decimal AdminFees, 
     decimal Total);
 
-public record PublicNotice(string Url, string Version, DateTimeOffset AttachedAt);
-
-public class Photo(string url, int order)
+public class PublicNotice
 {
-    public string Url { get; } = url;
-    public int Order { get; internal set; } = order;
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string Url { get; init; } = string.Empty;
+    public string Version { get; init; } = string.Empty;
+    public DateTimeOffset AttachedAt { get; init; }
+
+    internal PublicNotice() { }
+
+    public PublicNotice(string url, string version, DateTimeOffset attachedAt)
+    {
+        Url = url;
+        Version = version;
+        AttachedAt = attachedAt;
+    }
 }
 
-/// <summary>
-/// Represents a Lot in an auction, managing its lifecycle and bidding engine
-/// according to Brazilian regulatory framework.
-/// </summary>
+public class Photo
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string Url { get; init; } = string.Empty;
+    public int Order { get; internal set; }
+
+    internal Photo() { }
+
+    public Photo(string url, int order)
+    {
+        Url = url;
+        Order = order;
+    }
+}
+
 public class Lot
 {
-    private readonly List<Photo> _photos = [];
-    private readonly List<PublicNotice> _noticeHistory = [];
-
     public Guid Id { get; init; }
     public Guid AuctionId { get; init; }
-    public string Title { get; private set; }
+    public string Title { get; private set; } = string.Empty;
     public decimal StartingPrice { get; private set; }
     
     public decimal CurrentPrice 
@@ -64,17 +75,16 @@ public class Lot
     public DateTimeOffset? StartTime { get; private set; }
     public DateTimeOffset? EndTime { get; private set; }
     
-    /// <summary>
-    /// Configurable window for Soft Close (Time Extension). 
-    /// Defaults to 3 minutes as per standard industry practice and Decree 21,981/32.
-    /// </summary>
     public TimeSpan SoftCloseWindow { get; set; } = TimeSpan.FromMinutes(3);
 
-    public IReadOnlyCollection<Photo> Photos => _photos.AsReadOnly();
-    public PublicNotice? CurrentNotice => _noticeHistory.LastOrDefault();
-    public IReadOnlyCollection<PublicNotice> NoticeHistory => _noticeHistory.AsReadOnly();
+    public List<Photo> Photos { get; private set; } = [];
+    public List<PublicNotice> NoticeHistory { get; private set; } = [];
 
-    public Commission Commission { get; } = new();
+    public PublicNotice? CurrentNotice => NoticeHistory.OrderByDescending(n => n.AttachedAt).FirstOrDefault();
+
+    public Commission Commission { get; init; } = new();
+
+    internal Lot() { }
 
     public Lot(Guid id, Guid auctionId, string title, decimal startingPrice)
     {
@@ -87,49 +97,32 @@ public class Lot
         CurrentPrice = startingPrice;
     }
 
-    /// <summary>
-    /// Attaches a Public Notice (Edital) to the lot. Mandatory for publication.
-    /// Supports versioning for legal auditability.
-    /// </summary>
     public void AttachPublicNotice(string url, string version, DateTimeOffset attachedAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
         ArgumentException.ThrowIfNullOrWhiteSpace(version);
         
-        _noticeHistory.Add(new PublicNotice(url, version, attachedAt));
+        NoticeHistory.Add(new PublicNotice(url, version, attachedAt));
     }
 
-    /// <summary>
-    /// Adds a photo to the lot's catalog with optional manual ordering.
-    /// Reorders existing photos to maintain sequence integrity.
-    /// </summary>
     public void AddPhoto(string url, int? order = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
         
-        int targetOrder = order ?? (_photos.Count + 1);
-        _photos.Add(new Photo(url, targetOrder));
+        int targetOrder = order ?? (Photos.Count + 1);
+        Photos.Add(new Photo(url, targetOrder));
         ReorderPhotos();
     }
 
-    /// <summary>
-    /// Ensures photo sequence is consistent and gap-free.
-    /// </summary>
     private void ReorderPhotos()
     {
-        var ordered = _photos.OrderBy(p => p.Order).ThenBy(p => p.Url).ToList();
+        var ordered = Photos.OrderBy(p => p.Order).ThenBy(p => p.Url).ToList();
         for (int i = 0; i < ordered.Count; i++)
         {
             ordered[i].Order = i + 1;
         }
-        _photos.Clear();
-        _photos.AddRange(ordered);
     }
 
-    /// <summary>
-    /// Schedules the lot for a public session.
-    /// Validates mandatory requirements: photos, starting price, and public notice.
-    /// </summary>
     public void Schedule(DateTimeOffset start, DateTimeOffset end)
     {
         if (State != LotState.Draft)
@@ -138,7 +131,7 @@ public class Lot
         if (start >= end)
             throw new ArgumentException("Start time must be before end time.");
 
-        if (_photos.Count == 0)
+        if (Photos.Count == 0)
             throw new InvalidOperationException("A lot must have at least one photo before being scheduled.");
 
         if (CurrentNotice == null)
@@ -149,10 +142,6 @@ public class Lot
         State = LotState.Scheduled;
     }
 
-    /// <summary>
-    /// Opens the lot for real-time bidding.
-    /// Marks the start of the Public Session phase.
-    /// </summary>
     public void OpenForBidding(DateTimeOffset now)
     {
         if (State != LotState.Scheduled)
@@ -164,19 +153,13 @@ public class Lot
         State = LotState.Active;
     }
 
-    /// <summary>
-    /// Processes a new bid, validating state and price increments.
-    /// Implements Soft Close (Time Extension) logic using the configurable window.
-    /// </summary>
     public void PlaceBid(decimal amount, DateTimeOffset bidTime)
     {
         if (State != LotState.Active && State != LotState.Closing)
             throw new InvalidOperationException("Bids can only be placed when the lot is Active or in the Closing phase.");
 
-        // Setter of CurrentPrice handles the 'amount > CurrentPrice' validation via 'field' keyword
         CurrentPrice = amount;
 
-        // Soft Close Logic: If a bid is received in the last minutes defined by SoftCloseWindow, extend it.
         if (EndTime.HasValue && EndTime.Value - bidTime < SoftCloseWindow)
         {
             EndTime = bidTime.Add(SoftCloseWindow);
@@ -184,9 +167,6 @@ public class Lot
         }
     }
 
-    /// <summary>
-    /// Closes the bidding session.
-    /// </summary>
     public void Close(DateTimeOffset now)
     {
         if (State != LotState.Active && State != LotState.Closing)
@@ -198,9 +178,6 @@ public class Lot
         State = LotState.Closed;
     }
 
-    /// <summary>
-    /// Submits the lot to the consignor for approval when the reserve price is not met.
-    /// </summary>
     public void SubmitToConditional()
     {
         if (State != LotState.Closed)
@@ -209,9 +186,6 @@ public class Lot
         State = LotState.Conditional;
     }
 
-    /// <summary>
-    /// Finalizes the sale after payment confirmation.
-    /// </summary>
     public void MarkAsSold()
     {
         if (State != LotState.Closed && State != LotState.Conditional)
@@ -220,9 +194,6 @@ public class Lot
         State = LotState.Sold;
     }
 
-    /// <summary>
-    /// Marks the lot as unsold if no bids were placed or conditional sale was rejected.
-    /// </summary>
     public void MarkAsUnsold()
     {
         if (State != LotState.Closed && State != LotState.Conditional)
@@ -231,9 +202,6 @@ public class Lot
         State = LotState.Unsold;
     }
 
-    /// <summary>
-    /// Returns a detailed breakdown of the total price, ensuring financial transparency.
-    /// </summary>
     public PriceBreakdown GetPriceBreakdown()
     {
         var commissionAmount = Commission.Calculate(CurrentPrice);
