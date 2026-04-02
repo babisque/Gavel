@@ -44,3 +44,13 @@ Modern ASP.NET Core 10 Web API. Organized via **Vertical Slice Architecture**, o
 ## Refined Tech Stack
 - **Real-time:** SignalR is mandatory for "Soft Close" (Time extension) and live bid updates.
 - **Validation:** Use `FluentValidation` with specific rules for Brazilian CPF/CNPJ (as per business_logic.md).
+
+## Migrations Naming Convention
+- **Descriptive & Intent-based:** Migration names must follow the pattern `[Action][Target][Details]` in **PascalCase**.
+- **No Generic Names:** Strictly forbid names like `PhaseN`, `Initial`, `Fix`, or `Migration1`.
+- **Examples:** - ✅ `CreateBidderTable`
+    - ✅ `AddStatusReasonToBidder`
+    - ✅ `ConfigureLotJsonColumns`
+    - ✅ `RenameCommissionRateInLot`
+    - ❌ `Phase2`
+    - ❌ `FinalizePhase3`
