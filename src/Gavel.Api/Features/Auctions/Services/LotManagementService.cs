@@ -1,6 +1,7 @@
 namespace Gavel.Api.Features.Auctions.Services;
 
 using Gavel.Core.Domain.Lots;
+using Gavel.Core.Domain.Bidding;
 using Gavel.Api.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,10 +55,7 @@ public class LotManagementService(GavelDbContext context, TimeProvider timeProvi
 
     private async Task<Lot> GetLotOrThrowAsync(Guid lotId)
     {
-        return await context.Lots
-            .Include(l => l.Photos)
-            .Include(l => l.NoticeHistory)
-            .FirstOrDefaultAsync(l => l.Id == lotId) 
+        return await GetLotAsync(lotId) 
             ?? throw new KeyNotFoundException($"Lot {lotId} not found.");
     }
 }

@@ -53,14 +53,22 @@ public class Lot
     public Guid AuctionId { get; init; }
     public string Title { get; private set; } = string.Empty;
     public decimal StartingPrice { get; private set; }
+    public decimal MinimumIncrement { get; private set; }
+    public byte[] RowVersion { get; init; } = [];
     
     public decimal CurrentPrice 
     { 
         get; 
         private set 
         {
-            if (State != LotState.Draft && value <= field)
-                throw new InvalidOperationException("New bid must be higher than the current price.");
+            if (State != LotState.Draft)
+            {
+                if (CurrentBidderId != null && value < field + MinimumIncrement)
+                    throw new InvalidOperationException($"New bid must be at least {field + MinimumIncrement}.");
+                
+                if (CurrentBidderId == null && value < field)
+                    throw new InvalidOperationException("First bid must be at least the starting price.");
+            }
 
             if (value < StartingPrice) 
                 throw new ArgumentException("Price cannot be lower than the starting price.");
@@ -71,6 +79,7 @@ public class Lot
 
     public LotState State { get; private set; } = LotState.Draft;
     public decimal AdminFees { get; private set; }
+    public Guid? CurrentBidderId { get; private set; }
     
     public DateTimeOffset? StartTime { get; private set; }
     public DateTimeOffset? EndTime { get; private set; }
@@ -86,15 +95,17 @@ public class Lot
 
     internal Lot() { }
 
-    public Lot(Guid id, Guid auctionId, string title, decimal startingPrice)
+    public Lot(Guid id, Guid auctionId, string title, decimal startingPrice, decimal minimumIncrement = 1.00m)
     {
         if (startingPrice <= 0) throw new ArgumentException("Starting price must be greater than zero.");
+        if (minimumIncrement <= 0) throw new ArgumentException("Minimum increment must be greater than zero.");
         
         Id = id;
         AuctionId = auctionId;
         Title = title;
         StartingPrice = startingPrice;
         CurrentPrice = startingPrice;
+        MinimumIncrement = minimumIncrement;
     }
 
     public void AttachPublicNotice(string url, string version, DateTimeOffset attachedAt)
@@ -153,12 +164,13 @@ public class Lot
         State = LotState.Active;
     }
 
-    public void PlaceBid(decimal amount, DateTimeOffset bidTime)
+    public void PlaceBid(Guid bidderId, decimal amount, DateTimeOffset bidTime)
     {
         if (State != LotState.Active && State != LotState.Closing)
             throw new InvalidOperationException("Bids can only be placed when the lot is Active or in the Closing phase.");
 
         CurrentPrice = amount;
+        CurrentBidderId = bidderId;
 
         if (EndTime.HasValue && EndTime.Value - bidTime < SoftCloseWindow)
         {

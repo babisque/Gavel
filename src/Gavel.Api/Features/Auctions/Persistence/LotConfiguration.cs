@@ -18,9 +18,16 @@ public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(e => e.MinimumIncrement)
+            .HasPrecision(18, 2)
+            .IsRequired();
+
         builder.Property(e => e.CurrentPrice)
             .HasPrecision(18, 2)
             .IsRequired();
+
+        builder.Property(e => e.RowVersion)
+            .IsRowVersion();
 
         builder.Property(e => e.AdminFees)
             .HasPrecision(18, 2);
@@ -35,7 +42,6 @@ public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
             cb.Property(c => c.Rate).HasColumnName("CommissionRate").HasPrecision(5, 4);
         });
 
-        // Photos collection as Owned Entities
         builder.OwnsMany(e => e.Photos, pb =>
         {
             pb.HasKey(p => p.Id);
@@ -48,7 +54,6 @@ public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
             }
         });
 
-        // Public Notice History
         builder.OwnsMany(e => e.NoticeHistory, nb =>
         {
             nb.HasKey(n => n.Id);

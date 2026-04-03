@@ -3,6 +3,7 @@ using System;
 using Gavel.Api.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Gavel.Api.Migrations
 {
     [DbContext(typeof(GavelDbContext))]
-    partial class GavelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403231810_CreateBidTable")]
+    partial class CreateBidTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -112,17 +115,7 @@ namespace Gavel.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("LotId", "MaxAmount", "CreatedAt")
-                        .IsDescending(false, true, false)
-                        .HasDatabaseName("IX_ProxyBids_LotId_MaxAmount_CreatedAt");
 
                     b.ToTable("ProxyBids", (string)null);
                 });

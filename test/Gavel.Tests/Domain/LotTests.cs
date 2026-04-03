@@ -107,11 +107,11 @@ public class LotTests
         var lot = CreateActiveLot();
 
         // Act
-        Action action = () => lot.PlaceBid(lot.CurrentPrice - 1, DateTimeOffset.UtcNow);
+        Action action = () => lot.PlaceBid(Guid.NewGuid(), lot.CurrentPrice - 1, DateTimeOffset.UtcNow);
 
         // Assert
         await That(action).Throws<InvalidOperationException>()
-            .WithMessage("New bid must be higher than the current price.");
+            .WithMessage("First bid must be at least the starting price.");
     }
 
     [Test]
@@ -124,7 +124,7 @@ public class LotTests
         var newBidAmount = lot.CurrentPrice + 500m;
 
         // Act
-        lot.PlaceBid(newBidAmount, bidTime);
+        lot.PlaceBid(Guid.NewGuid(), newBidAmount, bidTime);
 
         // Assert
         var expectedEndTime = bidTime.AddMinutes(5);
