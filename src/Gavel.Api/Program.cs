@@ -13,6 +13,9 @@ using Gavel.Core.Infrastructure.Notifications;
 using Gavel.Api.Infrastructure.Logging;
 using Gavel.Api.Infrastructure.Notifications;
 using Gavel.Api.Features.Registration.Services;
+using Gavel.Api.Features.Settlements.Services;
+using Gavel.Api.Features.Settlements;
+using Gavel.Core.Domain.Settlements;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -21,6 +24,7 @@ builder.AddServiceDefaults();
 builder.Services.AddDbContext<GavelDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("gaveldb")));
 
+builder.Services.Configure<LotClosingOptions>(builder.Configuration.GetSection("LotClosing"));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -28,6 +32,9 @@ builder.Services.AddScoped<ITaxIdValidator, BrazilianTaxIdValidator>();
 builder.Services.AddScoped<IBidderRegistrationService, BidderRegistrationService>();
 builder.Services.AddScoped<ILotManagementService, LotManagementService>();
 builder.Services.AddScoped<Gavel.Api.Features.Bidding.Services.IBiddingService, Gavel.Api.Features.Bidding.Services.BiddingService>();
+builder.Services.AddScoped<ISettlementService, SettlementService>();
+builder.Services.AddHostedService<LotClosingBackgroundService>();
+builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 
 builder.Services.AddSignalR().AddJsonProtocol(options =>
 {
@@ -76,6 +83,7 @@ app.MapDefaultEndpoints();
 
 // Feature Endpoints
 app.MapLotEndpoints();
+app.MapSettlementEndpoints();
 app.MapHub<Gavel.Api.Features.Bidding.BiddingHub>("/bidding");
 
 app.Run();
@@ -91,11 +99,15 @@ app.Run();
 [JsonSerializable(typeof(PriceBreakdown))]
 [JsonSerializable(typeof(Gavel.Core.Domain.Bidding.ProxyBid))]
 [JsonSerializable(typeof(Gavel.Core.Domain.Bidding.Bid))]
+[JsonSerializable(typeof(Settlement))]
+[JsonSerializable(typeof(List<Settlement>))]
 [JsonSerializable(typeof(Photo))]
 [JsonSerializable(typeof(PublicNotice))]
 [JsonSerializable(typeof(Guid))]
 [JsonSerializable(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails))]
 [JsonSerializable(typeof(HttpValidationProblemDetails))]
+[JsonSerializable(typeof(AuditRecord))]
+[JsonSerializable(typeof(OutboxMessage))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

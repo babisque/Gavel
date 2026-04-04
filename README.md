@@ -65,10 +65,10 @@ dotnet run --project src/Gavel.AppHost
 - [x] High-concurrency validation for minimum increments.
 
 ### Phase 5: Financials & Settlement
-- [ ] Auctioneer Commission (5%) calculation service.
-- [ ] Invoice generation (V_a + 5% + Admin Fees).
-- [ ] Conditional Sale approval flow for reserve prices not met.
-- [ ] Auto-block delinquent bidders on payment default.
+- [x] Auctioneer Commission (5%) calculation service.
+- [x] Invoice generation (V_a + 5% + Admin Fees).
+- [x] Conditional Sale approval flow for reserve prices not met.
+- [x] Auto-block delinquent bidders on payment default.
 
 ### Phase 6: Legal & Bookkeeping
 - [ ] Automated Entry/Exit Log generation (Mandatory recordkeeping).
