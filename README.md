@@ -54,15 +54,15 @@ dotnet run --project src/Gavel.AppHost
 - [x] Document upload and administrative approval workflow.
 
 ### Phase 3: Cataloging & Asset Management
-- [ ] CRUD for Lots (Draft -> Scheduled).
-- [ ] Image/Media management with AOT-compatible JSON metadata.
-- [ ] Public Notice (Edital) attachment and versioning.
+- [x] CRUD for Lots (Draft -> Scheduled).
+- [x] Image/Media management with AOT-compatible JSON metadata.
+- [x] Public Notice (Edital) attachment and versioning.
 
 ### Phase 4: The Bidding Engine (Critical)
-- [ ] Real-time SignalR Hub (Source Generated).
-- [ ] Proxy Bidding (Automatic) logic with tie-break rules.
-- [ ] Soft Close (Atomic Time Extension) implementation.
-- [ ] High-concurrency validation for minimum increments.
+- [x] Real-time SignalR Hub (Source Generated).
+- [x] Proxy Bidding (Automatic) logic with tie-break rules.
+- [x] Soft Close (Atomic Time Extension) implementation.
+- [x] High-concurrency validation for minimum increments.
 
 ### Phase 5: Financials & Settlement
 - [ ] Auctioneer Commission (5%) calculation service.
