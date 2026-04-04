@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Gavel.Core.Domain.Lots;
 
-public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
+public sealed class LotConfiguration(string? providerName) : IEntityTypeConfiguration<Lot>
 {
     public void Configure(EntityTypeBuilder<Lot> builder)
     {
@@ -48,11 +48,15 @@ public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
             pb.Property(p => p.Url).HasMaxLength(2048).IsRequired();
             pb.Property(p => p.Order).IsRequired();
             
-            if (builder.Metadata.Model?.ToString().Contains("Npgsql") == true)
+            if (providerName == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
                 // pb.ToJson(); 
             }
         });
+
+        builder.Navigation(e => e.Photos)
+            .HasField("_photos")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.OwnsMany(e => e.NoticeHistory, nb =>
         {
@@ -61,10 +65,14 @@ public sealed class LotConfiguration : IEntityTypeConfiguration<Lot>
             nb.Property(n => n.Version).HasMaxLength(50).IsRequired();
             nb.Property(n => n.AttachedAt).IsRequired();
 
-            if (builder.Metadata.Model?.ToString().Contains("Npgsql") == true)
+            if (providerName == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
                 // nb.ToJson();
             }
         });
+
+        builder.Navigation(e => e.NoticeHistory)
+            .HasField("_noticeHistory")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

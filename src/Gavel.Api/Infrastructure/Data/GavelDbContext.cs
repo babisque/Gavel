@@ -4,6 +4,7 @@ using Gavel.Core.Domain.Auctions;
 using Gavel.Core.Domain.Lots;
 using Gavel.Core.Domain.Bidding;
 using Gavel.Core.Domain.Settlements;
+using Gavel.Api.Features.Auctions.Persistence;
 
 namespace Gavel.Api.Infrastructure.Data;
 
@@ -19,7 +20,11 @@ public class GavelDbContext(DbContextOptions<GavelDbContext> options) : DbContex
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(GavelDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(GavelDbContext).Assembly,
+            type => type.Name != nameof(LotConfiguration));
+
+        modelBuilder.ApplyConfiguration(new LotConfiguration(Database.ProviderName));
 
         if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
         {
@@ -32,6 +37,10 @@ public class GavelDbContext(DbContextOptions<GavelDbContext> options) : DbContex
             builder.Property(e => e.Type).HasMaxLength(100).IsRequired();
             builder.Property(e => e.Content).IsRequired();
             builder.Property(e => e.CreatedAt).IsRequired();
+            builder.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
         });
     }
 }

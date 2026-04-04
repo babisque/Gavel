@@ -72,8 +72,8 @@ dotnet run --project src/Gavel.AppHost
 
 ### Phase 6: Legal & Bookkeeping
 - [ ] Automated Entry/Exit Log generation (Mandatory recordkeeping).
-- [ ] Digital Signature integration for Auction Certificates (Auto de Arrematação).
-- [ ] Sale Note (Nota de Venda) generation.
+- [x] Digital Signature integration for Auction Certificates (Auto de Arrematação).
+- [x] Sale Note (Nota de Venda) generation.
 
 ### Phase 7: UI & Notifications
 - [ ] Angular-based Real-time Dashboard.

@@ -37,6 +37,8 @@ Modern ASP.NET Core 10 Web API. Organized via **Vertical Slice Architecture**, o
 
 ## Domain-Specific Technical Constraints (Critical)
 - **Financial Precision:** NEVER use `float` or `double` for values. Always use `decimal`.
+- **Transactional Integrity:** NEVER perform external I/O (API calls, digital signatures, email sending) inside a database transaction. Use the **Outbox Pattern** for all side effects.
+- **Outbox Claim Check:** Outbox processors MUST use a "Claim Check" pattern (Mark as In Progress -> Commit -> Execute I/O -> Finalize) to prevent holding database locks during external API calls.
 - **Audit Trail:** The `Bids` table must be APPEND-ONLY. No `Updates` or `Deletes` on bids.
 - **Concurrency:** Use EF Core **Row Versioning (Optimistic Concurrency)** to handle "last-second" bids.
 - **State Machine:** Implement a strict State Machine for the `Lot` status. Transitions must be validated (e.g., a "Sold" lot cannot go back to "Active").

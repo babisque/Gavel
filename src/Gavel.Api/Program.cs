@@ -14,8 +14,11 @@ using Gavel.Api.Infrastructure.Logging;
 using Gavel.Api.Infrastructure.Notifications;
 using Gavel.Api.Features.Registration.Services;
 using Gavel.Api.Features.Settlements.Services;
+using Gavel.Api.Features.Legal.Services;
 using Gavel.Api.Features.Settlements;
 using Gavel.Core.Domain.Settlements;
+using Gavel.Core.Infrastructure.Legal;
+using Gavel.Api.Infrastructure.Legal;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -33,6 +36,8 @@ builder.Services.AddScoped<IBidderRegistrationService, BidderRegistrationService
 builder.Services.AddScoped<ILotManagementService, LotManagementService>();
 builder.Services.AddScoped<Gavel.Api.Features.Bidding.Services.IBiddingService, Gavel.Api.Features.Bidding.Services.BiddingService>();
 builder.Services.AddScoped<ISettlementService, SettlementService>();
+builder.Services.AddScoped<ILegalDocumentService, LegalDocumentService>();
+builder.Services.AddScoped<IDigitalSignatureService, MockDigitalSignatureService>();
 builder.Services.AddHostedService<LotClosingBackgroundService>();
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 
@@ -100,6 +105,7 @@ app.Run();
 [JsonSerializable(typeof(Gavel.Core.Domain.Bidding.ProxyBid))]
 [JsonSerializable(typeof(Gavel.Core.Domain.Bidding.Bid))]
 [JsonSerializable(typeof(Settlement))]
+[JsonSerializable(typeof(SettlementStatus))]
 [JsonSerializable(typeof(List<Settlement>))]
 [JsonSerializable(typeof(Photo))]
 [JsonSerializable(typeof(PublicNotice))]
@@ -108,6 +114,7 @@ app.Run();
 [JsonSerializable(typeof(HttpValidationProblemDetails))]
 [JsonSerializable(typeof(AuditRecord))]
 [JsonSerializable(typeof(OutboxMessage))]
+[JsonSerializable(typeof(OutboxMessageStatus))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

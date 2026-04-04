@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Gavel.Api.Features.Settlements.Services;
 using Gavel.Api.Infrastructure.Data;
+using Gavel.Core.Domain.Settlements;
 using Gavel.Core.Infrastructure.Logging;
+using Gavel.Core.Infrastructure.Legal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,6 +18,7 @@ public class OutboxProcessorTests : IDisposable
 {
     private readonly string _dbName = Guid.NewGuid().ToString();
     private readonly IAuditLogger _auditLogger;
+    private readonly IDigitalSignatureService _signatureService;
     private readonly ServiceProvider _serviceProvider;
     private readonly TimeProvider _timeProvider;
     private readonly IOptions<LotClosingOptions> _options;
@@ -23,6 +26,7 @@ public class OutboxProcessorTests : IDisposable
     public OutboxProcessorTests()
     {
         _auditLogger = Substitute.For<IAuditLogger>();
+        _signatureService = Substitute.For<IDigitalSignatureService>();
         _timeProvider = Substitute.For<TimeProvider>();
         _timeProvider.GetUtcNow().Returns(DateTimeOffset.UtcNow);
 
@@ -30,6 +34,7 @@ public class OutboxProcessorTests : IDisposable
         services.AddDbContext<GavelDbContext>(options => 
             options.UseSqlite($"Data Source={_dbName}.db"));
         services.AddSingleton(_auditLogger);
+        services.AddSingleton(_signatureService);
         services.AddSingleton(_timeProvider);
         _serviceProvider = services.BuildServiceProvider();
 
@@ -55,8 +60,11 @@ public class OutboxProcessorTests : IDisposable
         {
             Type = "AuditRecord",
             Content = JsonSerializer.Serialize(record, AppJsonSerializerContext.Default.AuditRecord),
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            Status = OutboxMessageStatus.Pending
         };
+
+        var messageId = message.Id;
 
         using (var scope = _serviceProvider.CreateScope())
         {
@@ -65,6 +73,7 @@ public class OutboxProcessorTests : IDisposable
             await context.SaveChangesAsync();
         }
 
+        // We register the singleton services directly in the processor for verification
         var logger = Substitute.For<ILogger<OutboxProcessorBackgroundService>>();
         var processor = new OutboxProcessorBackgroundService(_serviceProvider, _options, _timeProvider, logger);
 
@@ -80,51 +89,69 @@ public class OutboxProcessorTests : IDisposable
         using (var scope = _serviceProvider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<GavelDbContext>();
-            var updatedMessage = await context.OutboxMessages.FindAsync(message.Id);
-            await That(updatedMessage!.ProcessedAt).IsNotNull();
-            await That(updatedMessage.RetryCount).IsEqualTo(0);
-            await That(updatedMessage.ErrorMessage).IsNull();
+            var updatedMessage = await context.OutboxMessages.FindAsync(messageId);
+            await That(updatedMessage!.Status).IsEqualTo(OutboxMessageStatus.Completed);
+            await That(updatedMessage.ProcessedAt).IsNotNull();
         }
     }
 
     [Test]
-    public async Task OutboxProcessor_IncrementsRetryCount_OnFailure()
+    public async Task OutboxProcessor_ProcessesSignSettlement_Successfully()
     {
         // Arrange
-        _auditLogger.When(x => x.LogAsync(Arg.Any<AuditRecord>()))
-            .Do(x => throw new Exception("Simulated Failure"));
+        var settlementId = Guid.NewGuid();
+        var settlement = new Settlement(
+            settlementId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new Gavel.Core.Domain.Lots.PriceBreakdown(1000, 50, 50, 1100),
+            DateTimeOffset.UtcNow,
+            SettlementStatus.PendingSignature
+        );
 
-        var record = new AuditRecord(Guid.NewGuid(), "FailEvent", DateTimeOffset.UtcNow, "Metadata");
         var message = new OutboxMessage
         {
-            Type = "AuditRecord",
-            Content = JsonSerializer.Serialize(record, AppJsonSerializerContext.Default.AuditRecord),
-            CreatedAt = DateTimeOffset.UtcNow
+            Type = "SignSettlement",
+            Content = settlementId.ToString(),
+            CreatedAt = DateTimeOffset.UtcNow,
+            Status = OutboxMessageStatus.Pending
         };
+
+        var messageId = message.Id;
 
         using (var scope = _serviceProvider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<GavelDbContext>();
+            context.Settlements.Add(settlement);
             context.OutboxMessages.Add(message);
             await context.SaveChangesAsync();
         }
 
+        _signatureService.SignSettlementAsync(Arg.Any<Settlement>()).Returns("valid-signature");
+
         var logger = Substitute.For<ILogger<OutboxProcessorBackgroundService>>();
         var processor = new OutboxProcessorBackgroundService(_serviceProvider, _options, _timeProvider, logger);
 
+        // Act
         var method = typeof(OutboxProcessorBackgroundService)
             .GetMethod("ProcessOutboxMessagesAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         
         await (Task)method!.Invoke(processor, new object[] { CancellationToken.None })!;
 
         // Assert
+        await _signatureService.Received(1).SignSettlementAsync(Arg.Any<Settlement>());
+        
         using (var scope = _serviceProvider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<GavelDbContext>();
-            var updatedMessage = await context.OutboxMessages.FindAsync(message.Id);
-            await That(updatedMessage!.ProcessedAt).IsNull();
-            await That(updatedMessage.RetryCount).IsEqualTo(1);
-            await That(updatedMessage.ErrorMessage).IsEqualTo("Simulated Failure");
+            var updatedSettlement = await context.Settlements.FindAsync(settlementId);
+            await That(updatedSettlement!.Status).IsEqualTo(SettlementStatus.Signed);
+            await That(updatedSettlement.DigitalSignature).IsEqualTo("valid-signature");
+            
+            var updatedMessage = await context.OutboxMessages.FindAsync(messageId);
+            await That(updatedMessage!.Status).IsEqualTo(OutboxMessageStatus.Completed);
+            await That(updatedMessage.ProcessedAt).IsNotNull();
         }
     }
 

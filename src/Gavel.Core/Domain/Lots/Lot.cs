@@ -1,5 +1,4 @@
 using Gavel.Core.Domain.Auctions;
-using System.Collections.ObjectModel;
 
 namespace Gavel.Core.Domain.Lots;
 
@@ -15,44 +14,37 @@ public record PriceBreakdown(
     decimal AdminFees, 
     decimal Total);
 
-public class PublicNotice
+public class PublicNotice(string url, string version, DateTimeOffset attachedAt)
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public string Url { get; init; } = string.Empty;
-    public string Version { get; init; } = string.Empty;
-    public DateTimeOffset AttachedAt { get; init; }
+    public string Url { get; init; } = url;
+    public string Version { get; init; } = version;
+    public DateTimeOffset AttachedAt { get; init; } = attachedAt;
 
-    internal PublicNotice() { }
-
-    public PublicNotice(string url, string version, DateTimeOffset attachedAt)
-    {
-        Url = url;
-        Version = version;
-        AttachedAt = attachedAt;
-    }
+    // EF Core constructor
+    private PublicNotice() : this(string.Empty, string.Empty, DateTimeOffset.MinValue) { }
 }
 
-public class Photo
+public class Photo(string url, int order)
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public string Url { get; init; } = string.Empty;
-    public int Order { get; internal set; }
+    public string Url { get; init; } = url;
+    public int Order { get; internal set; } = order;
 
-    internal Photo() { }
-
-    public Photo(string url, int order)
-    {
-        Url = url;
-        Order = order;
-    }
+    // EF Core constructor
+    private Photo() : this(string.Empty, 0) { }
 }
 
 public class Lot
 {
+    private readonly List<Photo> _photos = [];
+    private readonly List<PublicNotice> _noticeHistory = [];
+
     public Guid Id { get; init; }
     public Guid AuctionId { get; init; }
     public string Title { get; private set; } = string.Empty;
     public decimal StartingPrice { get; private set; }
+    public decimal? ReservePrice { get; private set; }
     public decimal MinimumIncrement { get; private set; }
     public byte[] RowVersion { get; init; } = [];
     
@@ -86,10 +78,10 @@ public class Lot
     
     public TimeSpan SoftCloseWindow { get; set; } = TimeSpan.FromMinutes(3);
 
-    public List<Photo> Photos { get; private set; } = [];
-    public List<PublicNotice> NoticeHistory { get; private set; } = [];
+    public IReadOnlyCollection<Photo> Photos => _photos.AsReadOnly();
+    public IReadOnlyCollection<PublicNotice> NoticeHistory => _noticeHistory.AsReadOnly();
 
-    public PublicNotice? CurrentNotice => NoticeHistory.OrderByDescending(n => n.AttachedAt).FirstOrDefault();
+    public PublicNotice? CurrentNotice => _noticeHistory.OrderByDescending(n => n.AttachedAt).FirstOrDefault();
 
     public Commission Commission { get; init; } = new();
 
@@ -113,24 +105,30 @@ public class Lot
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
         ArgumentException.ThrowIfNullOrWhiteSpace(version);
         
-        NoticeHistory.Add(new PublicNotice(url, version, attachedAt));
+        _noticeHistory.Add(new PublicNotice(url, version, attachedAt));
     }
 
     public void AddPhoto(string url, int? order = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
         
-        int targetOrder = order ?? (Photos.Count + 1);
-        Photos.Add(new Photo(url, targetOrder));
+        int targetOrder = order ?? (_photos.Count + 1);
+        _photos.Add(new Photo(url, targetOrder));
         ReorderPhotos();
     }
 
     private void ReorderPhotos()
     {
-        var ordered = Photos.OrderBy(p => p.Order).ThenBy(p => p.Url).ToList();
-        for (int i = 0; i < ordered.Count; i++)
+        _photos.Sort((x, y) =>
         {
-            ordered[i].Order = i + 1;
+            int orderComparison = x.Order.CompareTo(y.Order);
+            if (orderComparison != 0) return orderComparison;
+            return string.Compare(x.Url, y.Url, StringComparison.OrdinalIgnoreCase);
+        });
+
+        for (int i = 0; i < _photos.Count; i++)
+        {
+            _photos[i].Order = i + 1;
         }
     }
 
@@ -142,7 +140,7 @@ public class Lot
         if (start >= end)
             throw new ArgumentException("Start time must be before end time.");
 
-        if (Photos.Count == 0)
+        if (_photos.Count == 0)
             throw new InvalidOperationException("A lot must have at least one photo before being scheduled.");
 
         if (CurrentNotice == null)
@@ -225,5 +223,19 @@ public class Lot
     {
         if (fees < 0) throw new ArgumentException("Admin fees cannot be negative.");
         AdminFees = fees;
+    }
+
+    public void SetReservePrice(decimal? price)
+    {
+        if (State != LotState.Draft && State != LotState.Scheduled)
+            throw new InvalidOperationException("Reserve price can only be set in Draft or Scheduled state.");
+
+        if (price.HasValue)
+        {
+            if (price.Value < 0) throw new ArgumentException("Reserve price cannot be negative.");
+            if (price.Value < StartingPrice) throw new ArgumentException("Reserve price cannot be lower than starting price.");
+        }
+        
+        ReservePrice = price;
     }
 }

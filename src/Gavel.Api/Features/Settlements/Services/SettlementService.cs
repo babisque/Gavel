@@ -3,6 +3,7 @@ using Gavel.Api.Infrastructure.Data;
 using Gavel.Core.Domain.Lots;
 using Gavel.Core.Domain.Settlements;
 using Gavel.Core.Infrastructure.Logging;
+using Gavel.Core.Infrastructure.Legal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -73,9 +74,6 @@ public class SettlementService(
             string outcome;
             if (lot.CurrentBidderId.HasValue)
             {
-                lot.Close(now);
-                lot.MarkAsSold();
-                
                 var bids = await context.Bids
                     .Where(b => b.LotId == lot.Id && b.BidderId == lot.CurrentBidderId)
                     .ToListAsync(ct);
@@ -87,20 +85,40 @@ public class SettlementService(
 
                 if (winningBid != null)
                 {
+                    lot.Close(now);
+                    if (!lot.ReservePrice.HasValue || winningBid.Amount >= lot.ReservePrice.Value)
+                    {
+                        lot.MarkAsSold();
+                        outcome = "Sold";
+                    }
+                    else
+                    {
+                        lot.SubmitToConditional();
+                        outcome = "Conditional";
+                    }
+
                     var settlement = new Settlement(
                         Guid.NewGuid(),
                         lot.Id,
                         lot.CurrentBidderId.Value,
                         winningBid.Id,
                         lot.GetPriceBreakdown(),
-                        now
+                        now,
+                        SettlementStatus.PendingSignature
                     );
                     
                     context.Settlements.Add(settlement);
-                    outcome = "Sold";
+
+                    context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = "SignSettlement",
+                        Content = settlement.Id.ToString(),
+                        CreatedAt = now
+                    });
                 }
                 else
                 {
+                    lot.Close(now);
                     lot.MarkAsUnsold();
                     outcome = "SoldFailedNoBidFound";
                 }
@@ -116,7 +134,7 @@ public class SettlementService(
                 lot.CurrentBidderId ?? Guid.Empty,
                 "LotClosed",
                 now,
-                $"Lot: {lot.Id}, Outcome: {outcome}, FinalPrice: {lot.CurrentPrice}"
+                $"Lot: {lot.Id}, Outcome: {outcome}, FinalPrice: {lot.CurrentPrice}, Reserve: {lot.ReservePrice}"
             );
 
             context.OutboxMessages.Add(new OutboxMessage

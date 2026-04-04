@@ -3,6 +3,7 @@ using Gavel.Api.Infrastructure.Data;
 using Gavel.Core.Domain.Lots;
 using Gavel.Core.Domain.Settlements;
 using Gavel.Core.Infrastructure.Logging;
+using Gavel.Core.Infrastructure.Legal;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -71,6 +72,7 @@ public class SettlementIntegrationTests : IDisposable
         var settlement = await _context.Settlements.FirstOrDefaultAsync(s => s.LotId == lot.Id);
         await That(settlement).IsNotNull();
         await That(settlement!.PriceBreakdown.BidAmount).IsEqualTo(1500m);
+        await That(settlement.Status).IsEqualTo(SettlementStatus.PendingSignature);
     }
 
     [Test]
@@ -114,6 +116,39 @@ public class SettlementIntegrationTests : IDisposable
         // Verify that only one returned true (processed the lot)
         // Note: Without real SKIP LOCKED, this might fail or behave non-deterministically here.
         await That(results.Count(r => r)).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SettlementEngine_HandlesReservePrice_TransitionsToConditional()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        _timeProvider.GetUtcNow().Returns(now);
+        
+        var lot = new Lot(Guid.NewGuid(), Guid.NewGuid(), "Test Lot", 1000m);
+        lot.AddPhoto("http://example.com/photo.jpg");
+        lot.AttachPublicNotice("http://example.com/notice.pdf", "v1", now.AddDays(-3));
+        lot.SetReservePrice(2000m); // Reserve Price > Current Bid
+        lot.Schedule(now.AddDays(-2), now.AddDays(-1));
+        var bidderId = Guid.NewGuid();
+        lot.OpenForBidding(now.AddDays(-2));
+        lot.PlaceBid(bidderId, 1500m, now.AddMinutes(-5));
+        
+        var bid = new Gavel.Core.Domain.Bidding.Bid(Guid.NewGuid(), lot.Id, bidderId, 1500m, now.AddMinutes(-5), "127.0.0.1");
+        _context.Bids.Add(bid);
+        _context.Lots.Add(lot);
+        await _context.SaveChangesAsync();
+        
+        // Act
+        await _service.ProcessExpiredLotsAsync(CancellationToken.None);
+        
+        // Assert
+        var updatedLot = await _context.Lots.FindAsync(lot.Id);
+        await That(updatedLot!.State).IsEqualTo(LotState.Conditional);
+        
+        var settlement = await _context.Settlements.FirstOrDefaultAsync(s => s.LotId == lot.Id);
+        await That(settlement).IsNotNull(); // Settlement is still created for conditional sales
+        await That(settlement!.Status).IsEqualTo(SettlementStatus.PendingSignature);
     }
 
     public void Dispose()

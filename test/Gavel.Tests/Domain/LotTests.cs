@@ -152,6 +152,97 @@ public class LotTests
         await That(breakdown.Total).IsEqualTo(11000m);
     }
 
+    [Test]
+    public async Task SetReservePrice_InDraft_Succeeds()
+    {
+        // Arrange
+        var lot = new Lot(LotId, AuctionId, "Car", 1000m);
+
+        // Act
+        lot.SetReservePrice(1500m);
+
+        // Assert
+        await That(lot.ReservePrice).IsEqualTo(1500m);
+    }
+
+    [Test]
+    public async Task SetReservePrice_ToNull_Succeeds()
+    {
+        // Arrange
+        var lot = new Lot(LotId, AuctionId, "Car", 1000m);
+        lot.SetReservePrice(1500m);
+
+        // Act
+        lot.SetReservePrice(null);
+
+        // Assert
+        await That(lot.ReservePrice).IsNull();
+    }
+
+    [Test]
+    public async Task SetReservePrice_LowerThanStartingPrice_ThrowsArgumentException()
+    {
+        // Arrange
+        var lot = new Lot(LotId, AuctionId, "Car", 1000m);
+
+        // Act
+        Action action = () => lot.SetReservePrice(500m);
+
+        // Assert
+        await That(action).Throws<ArgumentException>()
+            .WithMessage("Reserve price cannot be lower than starting price.");
+    }
+
+    [Test]
+    public async Task SetReservePrice_InActiveState_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var lot = CreateActiveLot();
+
+        // Act
+        Action action = () => lot.SetReservePrice(2000m);
+
+        // Assert
+        await That(action).Throws<InvalidOperationException>()
+            .WithMessage("Reserve price can only be set in Draft or Scheduled state.");
+    }
+
+    [Test]
+    public async Task Photos_IsReadOnly_AndThrowsOnExternalMutation()
+    {
+        // Arrange
+        var lot = new Lot(LotId, AuctionId, "Car", 1000m);
+        lot.AddPhoto("photo.jpg");
+
+        // Act & Assert
+        // Casting to List should fail or mutation on the returned collection should throw
+        var photos = lot.Photos;
+        
+        // This should not compile if we use IReadOnlyCollection, 
+        // but if someone tries to cast it to a mutable interface:
+        if (photos is System.Collections.IList list)
+        {
+            Action action = () => list.Add(new Photo("malicious.jpg", 1));
+            await That(action).Throws<NotSupportedException>();
+        }
+    }
+
+    [Test]
+    public async Task NoticeHistory_IsReadOnly_AndThrowsOnExternalMutation()
+    {
+        // Arrange
+        var lot = new Lot(LotId, AuctionId, "Car", 1000m);
+        lot.AttachPublicNotice("url", "1.0", DateTimeOffset.UtcNow);
+
+        // Act & Assert
+        var history = lot.NoticeHistory;
+        if (history is System.Collections.IList list)
+        {
+            Action action = () => list.Clear();
+            await That(action).Throws<NotSupportedException>();
+        }
+    }
+
     private Lot CreateScheduledLot()
     {
         var lot = new Lot(LotId, AuctionId, "Car", 1000m);
