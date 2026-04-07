@@ -6,6 +6,7 @@ using Gavel.Core.Infrastructure.Logging;
 using Gavel.Core.Infrastructure.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
 using TUnit.Assertions.Extensions;
 using static TUnit.Assertions.Assert;
@@ -20,6 +21,7 @@ public class BidderRegistrationWorkflowTests : IDisposable
     private readonly TimeProvider timeProvider;
     private readonly INotificationService notificationService;
     private readonly ILogger<BidderRegistrationService> logger;
+    private readonly IMemoryCache cache;
     private readonly GavelDbContext context;
 
     public BidderRegistrationWorkflowTests()
@@ -34,12 +36,13 @@ public class BidderRegistrationWorkflowTests : IDisposable
         timeProvider = Substitute.For<TimeProvider>();
         notificationService = Substitute.For<INotificationService>();
         logger = Substitute.For<ILogger<BidderRegistrationService>>();
+        cache = Substitute.For<IMemoryCache>();
         
         // Default mock behavior for validator to avoid breaking existing tests
         taxIdValidator.Validate(Arg.Any<string>()).Returns(new ValidationResult(true));
 
         // Concrete implementation for the service under test
-        registrationService = new BidderRegistrationService(context, taxIdValidator, auditLogger, notificationService, timeProvider, logger);
+        registrationService = new BidderRegistrationService(context, taxIdValidator, auditLogger, notificationService, timeProvider, logger, cache);
     }
 
     private static ProfileData DefaultProfile() => new("João Silva", "00011122233", "joao@example.com");

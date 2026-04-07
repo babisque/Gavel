@@ -17,17 +17,25 @@ using Gavel.Api.Features.Settlements.Services;
 using Gavel.Api.Features.Legal.Services;
 using Gavel.Api.Features.Settlements;
 using Gavel.Core.Domain.Settlements;
+using Gavel.Core.Domain.Services;
 using Gavel.Core.Infrastructure.Legal;
 using Gavel.Api.Infrastructure.Legal;
+using Gavel.Core.Infrastructure.Storage;
+using Gavel.Api.Infrastructure.Storage;
+using Gavel.Api.Infrastructure.Outbox;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.AddServiceDefaults();
 
+builder.Services.AddMemoryCache();
+
 builder.Services.AddDbContext<GavelDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("gaveldb")));
 
 builder.Services.Configure<LotClosingOptions>(builder.Configuration.GetSection("LotClosing"));
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
+
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -36,10 +44,20 @@ builder.Services.AddScoped<IBidderRegistrationService, BidderRegistrationService
 builder.Services.AddScoped<ILotManagementService, LotManagementService>();
 builder.Services.AddScoped<Gavel.Api.Features.Bidding.Services.IBiddingService, Gavel.Api.Features.Bidding.Services.BiddingService>();
 builder.Services.AddScoped<ISettlementService, SettlementService>();
+builder.Services.AddScoped<IBusinessDayCalculator, BrazilianBusinessDayCalculator>();
 builder.Services.AddScoped<ILegalDocumentService, LegalDocumentService>();
 builder.Services.AddScoped<IDigitalSignatureService, MockDigitalSignatureService>();
+builder.Services.AddScoped<IStorageService, LocalFileStorageService>();
+
+// Outbox Handlers
+builder.Services.AddScoped<IOutboxHandler, AuditRecordHandler>();
+builder.Services.AddScoped<IOutboxHandler, SignSettlementHandler>();
+builder.Services.AddScoped<IOutboxHandler, GenerateDocumentsHandler>();
+builder.Services.AddScoped<IOutboxHandler, BlockDelinquentBidderHandler>();
+
 builder.Services.AddHostedService<LotClosingBackgroundService>();
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
+builder.Services.AddHostedService<PaymentMonitoringService>();
 
 builder.Services.AddSignalR().AddJsonProtocol(options =>
 {

@@ -6,6 +6,8 @@ public enum SettlementStatus
 {
     PendingSignature,
     Signed,
+    Paid,
+    Overdue,
     Canceled
 }
 
@@ -21,6 +23,7 @@ public class Settlement(
     Guid winningBidId,
     PriceBreakdown priceBreakdown,
     DateTimeOffset issuedAt,
+    DateTimeOffset paymentDeadline,
     SettlementStatus status = SettlementStatus.PendingSignature)
 {
     public Guid Id { get; init; } = id;
@@ -35,7 +38,10 @@ public class Settlement(
     public PriceBreakdown PriceBreakdown { get; init; } = priceBreakdown;
     
     public DateTimeOffset IssuedAt { get; init; } = issuedAt;
+    public DateTimeOffset PaymentDeadline { get; init; } = paymentDeadline;
+    public DateTimeOffset? PaidAt { get; private set; }
     public string? DigitalSignature { get; private set; }
+    public string? SaleNoteUrl { get; private set; }
     public SettlementStatus Status { get; private set; } = status;
     public string? CancellationReason { get; private set; }
 
@@ -55,14 +61,53 @@ public class Settlement(
     }
 
     /// <summary>
+    /// Updates the Sale Note URL after it has been generated and stored.
+    /// </summary>
+    public void SetSaleNoteUrl(string url)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(url);
+        
+        if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+            throw new ArgumentException("The provided URL is not a well-formed absolute URI.", nameof(url));
+
+        if (Status != SettlementStatus.Signed && Status != SettlementStatus.Paid)
+            throw new InvalidOperationException("Sale Note can only be set for signed or paid settlements.");
+
+        SaleNoteUrl = url;
+    }
+
+    /// <summary>
+    /// Marks the settlement as paid.
+    /// </summary>
+    public void MarkAsPaid(DateTimeOffset paidAt)
+    {
+        if (Status != SettlementStatus.Signed && Status != SettlementStatus.PendingSignature && Status != SettlementStatus.Overdue)
+            throw new InvalidOperationException($"Cannot mark settlement as paid from state {Status}.");
+
+        Status = SettlementStatus.Paid;
+        PaidAt = paidAt;
+    }
+
+    /// <summary>
+    /// Marks the settlement as overdue due to payment default.
+    /// </summary>
+    public void MarkAsOverdue()
+    {
+        if (Status != SettlementStatus.PendingSignature && Status != SettlementStatus.Signed)
+            throw new InvalidOperationException("Only pending or signed settlements can be marked as overdue.");
+
+        Status = SettlementStatus.Overdue;
+    }
+
+    /// <summary>
     /// Cancels the settlement. If it is already signed, an administrative override is required.
     /// </summary>
     public void Cancel(string reason, bool isAdministrativeOverride = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
 
-        if (Status == SettlementStatus.Signed && !isAdministrativeOverride)
-            throw new InvalidOperationException("A signed settlement cannot be canceled without an administrative override.");
+        if ((Status == SettlementStatus.Signed || Status == SettlementStatus.Paid) && !isAdministrativeOverride)
+            throw new InvalidOperationException("A signed or paid settlement cannot be canceled without an administrative override.");
 
         if (Status == SettlementStatus.Canceled)
             throw new InvalidOperationException("Settlement is already canceled.");
@@ -71,5 +116,5 @@ public class Settlement(
         CancellationReason = reason;
     }
 
-    private Settlement() : this(Guid.Empty, Guid.Empty, Guid.Empty, Guid.Empty, null!, DateTimeOffset.MinValue) { }
+    private Settlement() : this(Guid.Empty, Guid.Empty, Guid.Empty, Guid.Empty, null!, DateTimeOffset.MinValue, DateTimeOffset.MinValue) { }
 }

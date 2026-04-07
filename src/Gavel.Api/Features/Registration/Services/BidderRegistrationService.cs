@@ -6,6 +6,7 @@ using Gavel.Core.Domain.Auctions;
 using Gavel.Core.Infrastructure.Logging;
 using Gavel.Core.Infrastructure.Notifications;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 
 public interface IBidderRegistrationService
 {
@@ -15,6 +16,7 @@ public interface IBidderRegistrationService
     Task AcceptTermsAsync(Guid bidderId, string termsVersion, string sourceIp);
     Task RequestActionAsync(Guid bidderId, string reason);
     Task RejectAsync(Guid bidderId, string reason, string adminId);
+    Task BlockAsync(Guid bidderId, string reason);
     Task RegisterForAuctionAsync(Guid bidderId, Guid auctionId);
 }
 
@@ -24,7 +26,8 @@ public class BidderRegistrationService(
     IAuditLogger auditLogger,
     INotificationService notificationService,
     TimeProvider timeProvider,
-    ILogger<BidderRegistrationService> logger) : IBidderRegistrationService
+    ILogger<BidderRegistrationService> logger,
+    IMemoryCache cache) : IBidderRegistrationService
 {
     public async Task SubmitBasicInfoAsync(Guid bidderId, ProfileData data)
     {
@@ -106,6 +109,24 @@ public class BidderRegistrationService(
         {
             logger.LogError(ex, "Failed to send rejection notification for bidder {BidderId}.", bidderId);
         }
+    }
+
+    public async Task BlockAsync(Guid bidderId, string reason)
+    {
+        var bidder = await GetBidderOrThrowAsync(bidderId);
+        
+        bidder.Block(reason);
+        await context.SaveChangesAsync();
+
+        // Immediate enforcement by invalidating the status cache
+        cache.Remove($"bidder_status_{bidderId}");
+
+        await auditLogger.LogAsync(new AuditRecord(
+            bidder.Id,
+            "BidderBlocked",
+            timeProvider.GetUtcNow(),
+            $"Reason: {reason}"
+        ));
     }
 
     public async Task RegisterForAuctionAsync(Guid bidderId, Guid auctionId)

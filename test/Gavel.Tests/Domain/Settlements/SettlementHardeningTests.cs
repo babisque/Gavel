@@ -15,7 +15,8 @@ public class SettlementHardeningTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             new PriceBreakdown(1000, 50, 10, 1060),
-            DateTimeOffset.UtcNow
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(3)
         );
     }
 

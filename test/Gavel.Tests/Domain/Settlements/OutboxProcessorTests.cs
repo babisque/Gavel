@@ -1,9 +1,12 @@
 using System.Text.Json;
 using Gavel.Api.Features.Settlements.Services;
 using Gavel.Api.Infrastructure.Data;
+using Gavel.Api.Infrastructure.Outbox;
 using Gavel.Core.Domain.Settlements;
 using Gavel.Core.Infrastructure.Logging;
 using Gavel.Core.Infrastructure.Legal;
+using Gavel.Core.Infrastructure.Storage;
+using Gavel.Api.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,6 +22,8 @@ public class OutboxProcessorTests : IDisposable
     private readonly string _dbName = Guid.NewGuid().ToString();
     private readonly IAuditLogger _auditLogger;
     private readonly IDigitalSignatureService _signatureService;
+    private readonly ILegalDocumentService _documentService;
+    private readonly IStorageService _storageService;
     private readonly ServiceProvider _serviceProvider;
     private readonly TimeProvider _timeProvider;
     private readonly IOptions<LotClosingOptions> _options;
@@ -27,6 +32,8 @@ public class OutboxProcessorTests : IDisposable
     {
         _auditLogger = Substitute.For<IAuditLogger>();
         _signatureService = Substitute.For<IDigitalSignatureService>();
+        _documentService = Substitute.For<ILegalDocumentService>();
+        _storageService = Substitute.For<IStorageService>();
         _timeProvider = Substitute.For<TimeProvider>();
         _timeProvider.GetUtcNow().Returns(DateTimeOffset.UtcNow);
 
@@ -35,7 +42,15 @@ public class OutboxProcessorTests : IDisposable
             options.UseSqlite($"Data Source={_dbName}.db"));
         services.AddSingleton(_auditLogger);
         services.AddSingleton(_signatureService);
+        services.AddSingleton(_documentService);
+        services.AddSingleton(_storageService);
         services.AddSingleton(_timeProvider);
+        
+        // Register Handlers
+        services.AddScoped<IOutboxHandler, AuditRecordHandler>();
+        services.AddScoped<IOutboxHandler, SignSettlementHandler>();
+        services.AddScoped<IOutboxHandler, GenerateDocumentsHandler>();
+        
         _serviceProvider = services.BuildServiceProvider();
 
         using (var scope = _serviceProvider.CreateScope())
@@ -47,7 +62,8 @@ public class OutboxProcessorTests : IDisposable
         _options = Options.Create(new LotClosingOptions
         {
             OutboxBatchSize = 10,
-            OutboxCheckInterval = TimeSpan.FromSeconds(1)
+            OutboxCheckInterval = TimeSpan.FromSeconds(1),
+            MaxOutboxParallelism = 1
         });
     }
 
@@ -73,9 +89,9 @@ public class OutboxProcessorTests : IDisposable
             await context.SaveChangesAsync();
         }
 
-        // We register the singleton services directly in the processor for verification
         var logger = Substitute.For<ILogger<OutboxProcessorBackgroundService>>();
-        var processor = new OutboxProcessorBackgroundService(_serviceProvider, _options, _timeProvider, logger);
+        var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
+        var processor = new OutboxProcessorBackgroundService(scopeFactory, _options, _timeProvider, logger);
 
         // Act
         var method = typeof(OutboxProcessorBackgroundService)
@@ -107,6 +123,7 @@ public class OutboxProcessorTests : IDisposable
             Guid.NewGuid(),
             new Gavel.Core.Domain.Lots.PriceBreakdown(1000, 50, 50, 1100),
             DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(3),
             SettlementStatus.PendingSignature
         );
 
@@ -131,7 +148,8 @@ public class OutboxProcessorTests : IDisposable
         _signatureService.SignSettlementAsync(Arg.Any<Settlement>()).Returns("valid-signature");
 
         var logger = Substitute.For<ILogger<OutboxProcessorBackgroundService>>();
-        var processor = new OutboxProcessorBackgroundService(_serviceProvider, _options, _timeProvider, logger);
+        var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
+        var processor = new OutboxProcessorBackgroundService(scopeFactory, _options, _timeProvider, logger);
 
         // Act
         var method = typeof(OutboxProcessorBackgroundService)

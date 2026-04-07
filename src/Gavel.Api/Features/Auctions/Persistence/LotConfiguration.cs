@@ -18,6 +18,9 @@ public sealed class LotConfiguration(string? providerName) : IEntityTypeConfigur
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(e => e.ReservePrice)
+            .HasPrecision(18, 2);
+
         builder.Property(e => e.MinimumIncrement)
             .HasPrecision(18, 2)
             .IsRequired();

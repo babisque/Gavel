@@ -2,6 +2,7 @@ using Gavel.Api.Features.Settlements.Services;
 using Gavel.Api.Infrastructure.Data;
 using Gavel.Core.Domain.Lots;
 using Gavel.Core.Domain.Settlements;
+using Gavel.Core.Domain.Services;
 using Gavel.Core.Infrastructure.Logging;
 using Gavel.Core.Infrastructure.Legal;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public class SettlementIntegrationTests : IDisposable
     private readonly GavelDbContext _context;
     private readonly ISettlementService _service;
     private readonly TimeProvider _timeProvider;
+    private readonly IBusinessDayCalculator _businessDayCalculator;
     private readonly ILogger<SettlementService> _logger;
     private readonly IOptions<LotClosingOptions> _options;
 
@@ -33,12 +35,18 @@ public class SettlementIntegrationTests : IDisposable
         _context.Database.EnsureCreated();
         
         _timeProvider = Substitute.For<TimeProvider>();
+        _businessDayCalculator = Substitute.For<IBusinessDayCalculator>();
+        
+        // Mock default behavior for business days (3 calendar days for simplicity in integration tests)
+        _businessDayCalculator.AddBusinessDays(Arg.Any<DateTimeOffset>(), Arg.Any<int>())
+            .Returns(x => ((DateTimeOffset)x[0]).AddDays((int)x[1]));
+
         _logger = Substitute.For<ILogger<SettlementService>>();
         
         var closingOptions = new LotClosingOptions();
         _options = Options.Create(closingOptions);
         
-        _service = new SettlementService(_context, _timeProvider, _options, _logger);
+        _service = new SettlementService(_context, _timeProvider, _businessDayCalculator, _options, _logger);
     }
 
     [Test]
@@ -103,7 +111,7 @@ public class SettlementIntegrationTests : IDisposable
 
         // Simulate two instances of the service
         var service1 = _service;
-        var service2 = new SettlementService(_context, _timeProvider, _options, _logger);
+        var service2 = new SettlementService(_context, _timeProvider, _businessDayCalculator, _options, _logger);
 
         // This is a naive attempt to simulate concurrency on the same context (not ideal)
         // In a real scenario, they would have separate connections/contexts.

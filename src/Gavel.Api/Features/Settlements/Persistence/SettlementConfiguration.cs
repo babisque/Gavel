@@ -15,6 +15,22 @@ public sealed class SettlementConfiguration : IEntityTypeConfiguration<Settlemen
         builder.Property(e => e.BidderId).IsRequired();
         builder.Property(e => e.WinningBidId).IsRequired();
         builder.Property(e => e.IssuedAt).IsRequired();
+        builder.Property(e => e.PaymentDeadline).IsRequired();
+        builder.Property(e => e.PaidAt);
+
+        builder.Property(e => e.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(e => e.DigitalSignature)
+            .HasMaxLength(2048);
+
+        builder.Property(e => e.SaleNoteUrl)
+            .HasMaxLength(2048);
+
+        builder.Property(e => e.CancellationReason)
+            .HasMaxLength(1000);
 
         builder.ComplexProperty(e => e.PriceBreakdown, pb =>
         {

@@ -36,7 +36,8 @@ public class SettlementTests
             bidderId,
             winningBidId,
             breakdown,
-            DateTimeOffset.UtcNow
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(3)
         );
 
         // Assert

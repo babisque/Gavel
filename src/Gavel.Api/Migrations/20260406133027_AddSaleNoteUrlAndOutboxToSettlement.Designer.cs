@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Gavel.Api.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Gavel.Api.Migrations
 {
     [DbContext(typeof(GavelDbContext))]
-    partial class GavelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406133027_AddSaleNoteUrlAndOutboxToSettlement")]
+    partial class AddSaleNoteUrlAndOutboxToSettlement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -297,20 +300,12 @@ namespace Gavel.Api.Migrations
                     b.Property<Guid>("LotId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset?>("PaidAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("PaymentDeadline")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("SaleNoteUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("WinningBidId")
                         .HasColumnType("uuid");

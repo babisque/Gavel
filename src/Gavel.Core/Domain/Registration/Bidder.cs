@@ -11,7 +11,8 @@ public enum BidderState
     UnderReview,
     ActionRequired,
     Approved,
-    Rejected
+    Rejected,
+    Blocked
 }
 
 public record ProfileData(string Name, string TaxId, string Email);
@@ -139,6 +140,18 @@ public class Bidder
             throw new ArgumentException("Reason is mandatory when rejecting a bidder.", nameof(reason));
 
         State = BidderState.Rejected;
+        StatusReason = reason;
+    }
+
+    /// <summary>
+    /// Blocks the bidder due to delinquency or business rule violation.
+    /// This is a restrictive state to prevent participation in auctions.
+    /// </summary>
+    public void Block(string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        
+        State = BidderState.Blocked;
         StatusReason = reason;
     }
 }

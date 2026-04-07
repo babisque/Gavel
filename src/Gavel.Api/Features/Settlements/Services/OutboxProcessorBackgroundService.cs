@@ -1,15 +1,17 @@
-using System.Text.Json;
 using Gavel.Api.Infrastructure.Data;
-using Gavel.Core.Domain.Settlements;
-using Gavel.Core.Infrastructure.Logging;
-using Gavel.Core.Infrastructure.Legal;
+using Gavel.Api.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Gavel.Api.Features.Settlements.Services;
 
+/// <summary>
+/// Refactored Outbox Processor that acts as a Dispatcher.
+/// Resolves handlers for each message type and processes them concurrently.
+/// Ensures resilience through individual task persistence and safe error handling.
+/// </summary>
 public class OutboxProcessorBackgroundService(
-    IServiceProvider serviceProvider,
+    IServiceScopeFactory scopeFactory,
     IOptions<LotClosingOptions> options,
     TimeProvider timeProvider,
     ILogger<OutboxProcessorBackgroundService> logger) : BackgroundService
@@ -18,7 +20,7 @@ public class OutboxProcessorBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Outbox Processor Background Service is starting with interval {Interval}.", _options.OutboxCheckInterval);
+        logger.LogInformation("Outbox Dispatcher is starting with interval {Interval}.", _options.OutboxCheckInterval);
 
         using PeriodicTimer timer = new(_options.OutboxCheckInterval, timeProvider);
 
@@ -30,112 +32,114 @@ public class OutboxProcessorBackgroundService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error occurred while processing outbox messages.");
+                logger.LogError(ex, "Error occurred while dispatching outbox messages.");
             }
         }
 
-        logger.LogInformation("Outbox Processor Background Service is stopping.");
+        logger.LogInformation("Outbox Dispatcher is stopping.");
     }
 
     private async Task ProcessOutboxMessagesAsync(CancellationToken ct)
     {
-        using var scope = serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<GavelDbContext>();
-        var auditLogger = scope.ServiceProvider.GetRequiredService<IAuditLogger>();
-        var signatureService = scope.ServiceProvider.GetRequiredService<IDigitalSignatureService>();
-
         List<OutboxMessage> messages;
         var now = timeProvider.GetUtcNow();
 
-        await using (var transaction = await context.Database.BeginTransactionAsync(ct))
+        // 1. Claim Batch (Thread-safe claim using Row Versioning or DB Locks)
+        using (var scope = scopeFactory.CreateScope())
         {
-            var timeoutLimit = now.AddMinutes(-5);
-
-            var messagesQuery = context.Database.IsNpgsql()
-                ? @"SELECT * FROM ""OutboxMessages"" 
-                    WHERE ""Status"" IN ('Pending', 'Failed') 
-                       OR (""Status"" = 'Processing' AND ""StartedProcessingAt"" < {0})
-                    FOR UPDATE SKIP LOCKED 
-                    LIMIT {1}"
-                : @"SELECT * FROM ""OutboxMessages"" 
-                    WHERE ""Status"" IN ('Pending', 'Failed') 
-                       OR (""Status"" = 'Processing' AND ""StartedProcessingAt"" < {0})
-                    LIMIT {1}";
-
-            messages = await context.OutboxMessages
-                .FromSqlRaw(messagesQuery, timeoutLimit, _options.OutboxBatchSize)
-                .ToListAsync(ct);
-
-            if (messages.Count == 0)
+            var context = scope.ServiceProvider.GetRequiredService<GavelDbContext>();
+            await using (var transaction = await context.Database.BeginTransactionAsync(ct))
             {
-                await transaction.RollbackAsync(ct);
-                return;
-            }
+                var timeoutLimit = now.AddMinutes(-5);
 
-            foreach (var message in messages)
-            {
-                message.Status = OutboxMessageStatus.Processing;
-                message.StartedProcessingAt = now;
-            }
+                var messagesQuery = context.Database.IsNpgsql()
+                    ? @"SELECT * FROM ""OutboxMessages"" 
+                        WHERE ""Status"" IN ('Pending', 'Failed') 
+                           OR (""Status"" = 'Processing' AND ""StartedProcessingAt"" < {0})
+                        FOR UPDATE SKIP LOCKED 
+                        LIMIT {1}"
+                    : @"SELECT * FROM ""OutboxMessages"" 
+                        WHERE ""Status"" IN ('Pending', 'Failed') 
+                           OR (""Status"" = 'Processing' AND ""StartedProcessingAt"" < {0})
+                        LIMIT {1}";
 
-            await context.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
+                messages = await context.OutboxMessages
+                    .FromSqlRaw(messagesQuery, timeoutLimit, _options.OutboxBatchSize)
+                    .ToListAsync(ct);
+
+                if (messages.Count == 0)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return;
+                }
+
+                foreach (var message in messages)
+                {
+                    message.Status = OutboxMessageStatus.Processing;
+                    message.StartedProcessingAt = now;
+                }
+
+                await context.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+            }
         }
 
-        foreach (var message in messages)
+        // 2. Parallel Dispatch with Resilient Updates
+        await Parallel.ForEachAsync(messages, new ParallelOptions 
+        { 
+            MaxDegreeOfParallelism = _options.MaxOutboxParallelism,
+            CancellationToken = ct 
+        }, async (message, token) =>
         {
+            using var scope = scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<GavelDbContext>();
+            var handlers = scope.ServiceProvider.GetServices<IOutboxHandler>();
+            
             try
             {
-                if (message.Type == "AuditRecord")
+                var handler = handlers.FirstOrDefault(h => h.CanHandle(message.Type));
+                
+                if (handler != null)
                 {
-                    var record = JsonSerializer.Deserialize(message.Content, AppJsonSerializerContext.Default.AuditRecord);
-                    if (record != null)
-                    {
-                        await auditLogger.LogAsync(record);
-                    }
+                    await handler.HandleAsync(message, context, token);
+                    
+                    message.Status = OutboxMessageStatus.Completed;
+                    message.ProcessedAt = timeProvider.GetUtcNow();
+                    message.ErrorMessage = null;
                 }
-                else if (message.Type == "SignSettlement")
+                else
                 {
-                    if (Guid.TryParse(message.Content, out var settlementId))
-                    {
-                        var settlement = await context.Settlements
-                            .FirstOrDefaultAsync(s => s.Id == settlementId, ct);
-                            
-                        if (settlement != null)
-                        {
-                            var signature = await signatureService.SignSettlementAsync(settlement);
-                            settlement.ApplySignature(signature);
-
-                            await auditLogger.LogAsync(new AuditRecord(
-                                settlement.BidderId,
-                                "SettlementSigned",
-                                timeProvider.GetUtcNow(),
-                                $"Settlement: {settlement.Id}, Signature: {signature}"
-                            ));
-                        }
-                    }
+                    logger.LogWarning("No handler found for outbox message type: {Type}", message.Type);
+                    message.Status = OutboxMessageStatus.Completed; // Skip to avoid infinite retry loop
                 }
 
-                message.Status = OutboxMessageStatus.Completed;
-                message.ProcessedAt = timeProvider.GetUtcNow();
-                message.ErrorMessage = null;
+                // Resilient Persistence: Save success within the task scope
+                context.OutboxMessages.Attach(message);
+                context.Entry(message).State = EntityState.Modified;
+                await context.SaveChangesAsync(token);
             }
             catch (Exception ex)
             {
-                message.RetryCount++;
-                message.ErrorMessage = ex.Message;
-                message.Status = OutboxMessageStatus.Failed;
-                message.StartedProcessingAt = null; 
-                logger.LogWarning(ex, "Failed to process outbox message {Id}. Retry count: {Count}", message.Id, message.RetryCount);
-            }
-            
-            if (context.Entry(message).State == EntityState.Detached)
-            {
-                context.OutboxMessages.Attach(message);
-            }
-            context.Entry(message).State = EntityState.Modified;
-        }
+                logger.LogWarning(ex, "Failed to process outbox message {Id} ({Type}). Attempting to record failure state.", message.Id, message.Type);
+                
+                try
+                {
+                    // Update state for retry
+                    message.RetryCount++;
+                    message.ErrorMessage = ex.Message;
+                    message.Status = OutboxMessageStatus.Failed;
+                    message.StartedProcessingAt = null; 
 
-        await context.SaveChangesAsync(ct);
+                    // Safe Save: Record error without crashing the worker
+                    context.OutboxMessages.Attach(message);
+                    context.Entry(message).State = EntityState.Modified;
+                    await context.SaveChangesAsync(CancellationToken.None); // Use None to ensure failure state is recorded even if batch is cancelling
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogCritical(saveEx, "CRITICAL: Could not persist failure state for Outbox message {Id}.", message.Id);
+                }
+            }
+        });
     }
 }

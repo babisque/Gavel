@@ -2,6 +2,7 @@ using System.Text.Json;
 using Gavel.Api.Infrastructure.Data;
 using Gavel.Core.Domain.Lots;
 using Gavel.Core.Domain.Settlements;
+using Gavel.Core.Domain.Services;
 using Gavel.Core.Infrastructure.Logging;
 using Gavel.Core.Infrastructure.Legal;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ namespace Gavel.Api.Features.Settlements.Services;
 public class SettlementService(
     GavelDbContext context,
     TimeProvider timeProvider,
+    IBusinessDayCalculator businessDayCalculator,
     IOptions<LotClosingOptions> options,
     ILogger<SettlementService> logger) : ISettlementService
 {
@@ -97,6 +99,8 @@ public class SettlementService(
                         outcome = "Conditional";
                     }
 
+                    var deadline = businessDayCalculator.AddBusinessDays(now, _options.SettlementPaymentDeadlineBusinessDays);
+
                     var settlement = new Settlement(
                         Guid.NewGuid(),
                         lot.Id,
@@ -104,6 +108,7 @@ public class SettlementService(
                         winningBid.Id,
                         lot.GetPriceBreakdown(),
                         now,
+                        deadline,
                         SettlementStatus.PendingSignature
                     );
                     
@@ -141,6 +146,13 @@ public class SettlementService(
             {
                 Type = "AuditRecord",
                 Content = JsonSerializer.Serialize(auditRecord, AppJsonSerializerContext.Default.AuditRecord),
+                CreatedAt = now
+            });
+
+            context.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = "GenerateAuctionMinutes",
+                Content = lot.Id.ToString(),
                 CreatedAt = now
             });
 
